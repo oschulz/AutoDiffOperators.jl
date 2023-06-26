@@ -73,7 +73,7 @@ end
 MatrixLikeOperator{T,sym,herm,posdef}(A::MatrixLikeOperator{T,sym,herm,posdef}) where {T<:Number,sym,herm,posdef} = A
 
 function MatrixLikeOperator{T,sym,herm,posdef}(A::AbstractMatrix{T})  where {T<:Number,sym,herm,posdef}
-    _MulFuncOperator{T, sym, herm, posdef}(Base.Fix1(*, A), Base.Fix1(*, A'), size(A))
+    _MulFuncOperator{T, sym, herm, posdef}(Mul(A), Mul(A'), size(A))
 end
 
 MatrixLikeOperator(A::MatrixLikeOperator{T}) where T = A
@@ -152,8 +152,8 @@ end
 
 @inline function _op_mul(s::Number, A::MatrixLikeOperator{T,sym,herm,posdef}) where {T,sym,herm,posdef}
     MatrixLikeOperator{promote_type(T,typeof(s)), sym, herm, posdef}(
-        Base.Fix1(*, s) ∘ _jvp_func(A),
-        _vjp_func(A) ∘ Base.Fix1(*, s),
+        fchain(_jvp_func(A), Mul(s)),
+        fchain(Mul(s), _vjp_func(A)),
         size(A)
     )
 end
@@ -178,8 +178,8 @@ function _op_mul(
     B::MatrixLikeOperator{U,sym2,herm2,posdef2}
 ) where {T<:Number,sym,herm,posdef,U<:Number,sym2,herm2,posdef2}
     MatrixLikeOperator{promote_type(T,U), sym && sym2, herm && herm2, posdef && posdef2}(
-        _jvp_func(A) ∘ _jvp_func(B),
-        _vjp_func(B) ∘ _vjp_func(A),
+        fchain( _jvp_func(B), _jvp_func(A)),
+        fchain( _vjp_func(A), _vjp_func(B)),
         (size(A, 1), size(B, 2))
     )
 end

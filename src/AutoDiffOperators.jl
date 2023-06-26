@@ -12,6 +12,9 @@ using LinearAlgebra
 import ADTypes
 import AbstractDifferentiation
 
+using AffineMaps: Mul
+using FunctionChains: fchain
+
 include("matrix_like_operator.jl")
 include("ad_selector.jl")
 include("jacobian.jl")

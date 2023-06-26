@@ -12,6 +12,8 @@ import AutoDiffOperators
 import AbstractDifferentiation
 import ADTypes
 
+using FunctionChains: fchain
+
 
 Base.Module(::AutoDiffOperators.ADModule{:Zygote}) = Zygote
 
@@ -66,7 +68,7 @@ end
 
 function AutoDiffOperators.with_vjp_func(f::Function, x, ::ZygoteAD)
     y, pullback = Zygote.pullback(f, x)
-    return y, only ∘ pullback
+    return y, fchain(pullback, only)
 end
 
 
