@@ -194,7 +194,7 @@ Base.@propagate_inbounds LinearAlgebra.mul!(Y::AbstractMatrix{<:Number}, A::Abst
 Base.@propagate_inbounds LinearAlgebra.mul!(Y::AbstractMatrix{<:Number}, A::MatrixLikeOperator, X::MatrixLikeOperator) = _op_mul!(Y, A, X)
 # Disambiguation:
 Base.@propagate_inbounds LinearAlgebra.mul!(Y::AbstractMatrix{<:Number}, A::LinearAlgebra.AbstractTriangular{<:Number}, X::MatrixLikeOperator) = _op_mul!(Y, A, X)
-
+Base.@propagate_inbounds LinearAlgebra.mul!(Y::AbstractMatrix{<:Number}, A::MatrixLikeOperator, X::LinearAlgebra.AbstractTriangular{<:Number}) = _op_mul!(Y, A, X)
 
 Base.@propagate_inbounds function _op_mul!(y::AbstractMatrix{<:Number}, op::MatrixLikeOperator, s::Number)
     return copyto!(y, op * s)
