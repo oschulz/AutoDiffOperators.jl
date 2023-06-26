@@ -135,6 +135,18 @@ _vjp_func(op::AdjointMatrixLikeOperator) = _jvp_func(op')
 @inline Base.:(*)(a::Diagonal{<:Number}, b::MatrixLikeOperator) = _op_mul(a, b)
 @inline Base.:(*)(a::LinearAlgebra.AbstractTriangular{<:Number}, b::MatrixLikeOperator) = _op_mul(a, b)
 
+@static if VERSION < v"1.9"
+    # Julia v1.6 Disambiguation:
+    const _LinAlgRHSCH = LinearAlgebra.RealHermSymComplexHerm
+    const _LinAlgRHSCS = LinearAlgebra.RealHermSymComplexSym
+    @inline Base.:(*)(a::MatrixLikeOperator, b::LinearAlgebra.Adjoint{<:Number,<:_LinAlgRHSCH}) = _op_mul(a, b)
+    @inline Base.:(*)(a::LinearAlgebra.Adjoint{<:Number,<:_LinAlgRHSCH}, b::MatrixLikeOperator) = _op_mul(a, b)
+    @inline Base.:(*)(a::MatrixLikeOperator, b::LinearAlgebra.Adjoint{<:Number,<:LinearAlgebra.AbstractRotation}) = _op_mul(a, b)
+    @inline Base.:(*)(a::LinearAlgebra.Adjoint{<:Number,<:LinearAlgebra.AbstractRotation}, b::MatrixLikeOperator) = _op_mul(a, b)
+    @inline Base.:(*)(a::MatrixLikeOperator, b::LinearAlgebra.Transpose{<:Number,<:_LinAlgRHSCS}) = _op_mul(a, b)
+    @inline Base.:(*)(a::LinearAlgebra.Transpose{<:Number,<:_LinAlgRHSCS}, b::MatrixLikeOperator) = _op_mul(a, b)
+end
+
 @inline Base.:(*)(a::LinearAlgebra.Transpose{<:Number,<:AbstractVector}, b::MatrixLikeOperator) = _op_mul(a, b)
 @inline Base.:(*)(a::LinearAlgebra.Adjoint{<:Number,<:AbstractVector}, b::MatrixLikeOperator) = _op_mul(a, b)
 
