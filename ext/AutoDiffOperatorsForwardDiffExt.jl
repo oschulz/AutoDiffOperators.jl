@@ -59,7 +59,7 @@ struct _JacVecProdTag{F, T} end
 
 function _dual_along(f::F, x::AbstractVector{T1}, z::AbstractVector{T2}) where {F, T1, T2}
     T =  promote_type(T1, T2)
-    T_Dual = _JacVecProdTag{F, T}
+    T_Dual = _JacVecProdTag{Core.Typeof(f), T}
     # ToDo: use `StructArrays.StructArray`? Would add StructArrays to deps.
     f(ForwardDiff.Dual{T_Dual}.(x, z))
 end
