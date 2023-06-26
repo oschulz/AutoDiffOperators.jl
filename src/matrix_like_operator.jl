@@ -104,6 +104,9 @@ end
 @inline Base.parent(op::AdjointMatrixLikeOperator) = op.parent
 @inline Base.size(op::AdjointMatrixLikeOperator) = reverse(size(parent(op)))
 
+Base.:(==)(a::AdjointMatrixLikeOperator, b::AdjointMatrixLikeOperator) = a.parent == b.parent
+Base.isapprox(A::AdjointMatrixLikeOperator, B::AdjointMatrixLikeOperator; kwargs...) = isapprox(A.parent, B.parent; kwargs...)
+
 @inline Base.adjoint(op::MatrixLikeOperator) = AdjointMatrixLikeOperator(op)
 @inline Base.adjoint(op::AdjointMatrixLikeOperator) = parent(op)
 
@@ -350,6 +353,9 @@ struct _MulFuncOperator{T<:Number,sym,herm,posdef,F,G} <: MatrixLikeOperator{T,s
     vop::G
     sz::Dims
 end
+
+Base.:(==)(a::_MulFuncOperator, b::_MulFuncOperator) = a.ovp == b.ovp && a.vop == b.vop && a.sz == b.sz
+Base.isapprox(a::_MulFuncOperator, b::_MulFuncOperator; kwargs...) = isapprox(a.ovp, b.ovp; kwargs...) && isapprox(a.vop, b.vop; kwargs...) && a.sz == b.sz
 
 function _MulFuncOperator{T,sym,herm,posdef}(ovp::F, vop::G, sz::Dims) where {T<:Number,sym,herm,posdef,F,G}
     _MulFuncOperator{T,sym,herm,posdef,F,G}(ovp, vop, sz)
