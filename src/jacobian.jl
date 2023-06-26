@@ -55,6 +55,7 @@ struct _JVPFunc{F,V,AD<:ADSelector} <: Function
     x::V
     ad::AD
 end
+_JVPFunc(::Type{FT}, x::V, ad::AD) where {FT,V,AD<:ADSelector}  = _JVPFunc{Type{FT},V,AD}(FT, x, ad)
 
 (jvp_func::_JVPFunc)(z) = with_jvp(jvp_func.f, jvp_func.x, z, jvp_func.ad)[2]
 
@@ -93,11 +94,12 @@ with_vjp_func(f, x, ad::FwdRevADSelector) = with_vjp_func(f, x, reverse_ad_selec
 
 
 
-struct _FwdModeVJPFunc{F<:Function,T<:AbstractVector{<:Real},AD<:ADSelector} <: Function
+struct _FwdModeVJPFunc{F,T<:AbstractVector{<:Real},AD<:ADSelector} <: Function
     f::F
     x::T
     ad::AD
 end
+_FwdModeVJPFunc(::Type{FT}, x::T, ad::AD) where {FT,T<:AbstractVector{<:Real},AD<:ADSelector}  = _FwdModeVJPFunc{Type{FT},T,AD}(FT, x, ad)
 
 function _similar_onehot(A::AbstractArray{<:Number}, ::Type{T}, n::Integer, i::Integer) where {T<:Number}
     result = similar(A, T, (n,))
