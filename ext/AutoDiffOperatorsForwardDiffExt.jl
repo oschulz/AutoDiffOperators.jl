@@ -53,9 +53,6 @@ AutoDiffOperators.with_gradient(f, x::AbstractVector{<:Real}, ad::ForwardDiffAD)
 
 # ToDo: Specialize `AutoDiffOperators.with_gradient!!(f, δx, x, ad::ForwardDiffAD)`
 
-# ToDo: Use AD parameters
-AutoDiffOperators.jacobian_matrix(f, x::AbstractVector{<:Real}, ad::ForwardDiffAD) = ForwardDiff.jacobian(f, x)
-
 
 struct _JacVecProdTag{F, T} end
 
@@ -66,21 +63,19 @@ function _dual_along(f::F, x::AbstractVector{T1}, z::AbstractVector{T2}) where {
     f(ForwardDiff.Dual{T_Dual}.(x, z))
 end
 
-function AutoDiffOperators.with_jvp(f, x, z, ::ForwardDiffAD)
+function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ::ForwardDiffAD)
     dual_y = _dual_along(f, x, z)
     ForwardDiff.value.(dual_y), ForwardDiff.partials.(dual_y, 1)
 end
 
 
-function AutoDiffOperators.with_vjp_func(f, x, ad::ForwardDiffAD)
+function AutoDiffOperators.with_vjp_func(f, x::AbstractVector{<:Real}, ad::ForwardDiffAD)
     f(x), AutoDiffOperators._FwdModeVJPFunc(f, x, ad)
 end
 
 
 # ToDo: Use AD parameters
-function AutoDiffOperators.jacobian_matrix(f, x, ad::ForwardDiffAD)
-    ForwardDiff.jacobian(f, x)
-end
+AutoDiffOperators.jacobian_matrix(f, x::AbstractVector{<:Real}, ad::ForwardDiffAD) = ForwardDiff.jacobian(f, x)
 
 
 # ToDo: Use AD parameters

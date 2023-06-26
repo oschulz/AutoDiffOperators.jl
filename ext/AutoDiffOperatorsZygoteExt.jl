@@ -59,20 +59,20 @@ function AutoDiffOperators.convert_ad(::Type{AutoDiffOperators.ADModule}, ad::AD
 end
 
 
-function AutoDiffOperators.with_jvp(f, x, z, ad::ZygoteAD)
+function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ad::ZygoteAD)
     fwd_ad = forward_ad_selector(ad)
     @assert !(fwd_ad isa ZygoteAD)
     AutoDiffOperators.with_jvp(f, x, z, fwd_ad)
 end
 
 
-function AutoDiffOperators.with_vjp_func(f, x, ::ZygoteAD)
+function AutoDiffOperators.with_vjp_func(f, x::AbstractVector{<:Real}, ::ZygoteAD)
     y, pullback = Zygote.pullback(f, x)
     return y, fchain(pullback, only)
 end
 
 
-function AutoDiffOperators.jacobian_matrix(f, x, ::ZygoteAD)
+function AutoDiffOperators.jacobian_matrix(f, x::AbstractVector{<:Real}, ::ZygoteAD)
     only(Zygote.jacobian(f, x))
 end
 
