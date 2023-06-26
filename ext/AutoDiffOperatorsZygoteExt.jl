@@ -66,7 +66,7 @@ function AutoDiffOperators.with_jvp(f, x, z, ad::ZygoteAD)
 end
 
 
-function AutoDiffOperators.with_vjp_func(f::Function, x, ::ZygoteAD)
+function AutoDiffOperators.with_vjp_func(f, x, ::ZygoteAD)
     y, pullback = Zygote.pullback(f, x)
     return y, fchain(pullback, only)
 end
