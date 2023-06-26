@@ -51,6 +51,8 @@ end
 # ToDo: Use AD parameters
 AutoDiffOperators.with_gradient(f, x::AbstractVector{<:Real}, ad::ForwardDiffAD) = f(x), ForwardDiff.gradient(f, x)
 
+# ToDo: Specialize `AutoDiffOperators.with_gradient!!(f, δx, x, ad::ForwardDiffAD)`
+
 # ToDo: Use AD parameters
 AutoDiffOperators.jacobian_matrix(f, x::AbstractVector{<:Real}, ad::ForwardDiffAD) = ForwardDiff.jacobian(f, x)
 

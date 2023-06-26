@@ -9,3 +9,11 @@ AD-backends are specified via subtypes of [`ADSelector`](@ref), separate backend
 The main functions are [`with_gradient`](@ref) and [`with_jacobian`](@ref). Explicit Jacobian matrices can be obtained via [`jacobian_matrix`](@ref). The central lower-level functions are [`with_jvp`](@ref) and [`with_vjp_func`](@ref).
 
 Operators (as returned from [`with_jacobian`](@ref)) can be converted to a [LinearMaps.LinearMap](https://github.com/JuliaLinearAlgebra/LinearMaps.jl).
+
+Different Julia packages require function and gradient calculation to be passed in a different fashion. AutoDiffOperators provides
+
+* [`valgrad_func(f, ad::ADSelector)`](@ref): generates `f_∇f` with `y, δx = f_∇f(x)`.
+* [`gradient_func(f, ad::ADSelector)`](@ref): generates `∇f` with `δx = ∇f(x)`.
+* [`gradient!_func(f, ad::ADSelector)`](@ref): generates `∇f!` with `δx === ∇f!(δx, x)`.
+
+to cover several popular options.
