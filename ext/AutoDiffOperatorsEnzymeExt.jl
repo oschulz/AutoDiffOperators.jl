@@ -54,8 +54,8 @@ end
 
 
 function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ::EnzymeAD)
-    # ToDo: Improve implementation
-    f(x), autodiff(Forward, f, DuplicatedNoNeed, Duplicated(x, z))[1]
+    f_x, J_z = autodiff(Forward, f, Duplicated, Duplicated(x, z))
+    return f_x, J_z
 end
 
 # ToDo: Broadcast specialization of `with_jvp` for multiple z-values using `Enzyme.BatchDuplicated`.
