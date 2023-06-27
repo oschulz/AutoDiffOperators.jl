@@ -125,9 +125,11 @@ end
 
 # ToDo: Broadcast specialization of functions returned by `with_vjp_func` for multiple z-values.
 
-
-function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::EnzymeAD)
-    f(x), Enzyme.jacobian(Enzyme.Forward, f, x)
+@static if VERSION >= v"1.9"
+    # Causes crashes on (at least) Julia v1.6:
+    function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::EnzymeAD)
+        f(x), Enzyme.jacobian(Enzyme.Forward, f, x)
+    end
 end
 
 
