@@ -37,13 +37,19 @@ function mulfunc_operator(
 ) where {T<:Real, sym, herm, posdef}
     A = Matrix{T}(undef, sz)
     first_j_A = firstindex(A, 2)
-    X = Matrix{T}(undef, sz[2], nthreads())
-    first_j_X = firstindex(X, 1)
-    fill!(X, zero(T))
+    # Enzyme doesn't like `Duplicated` with mixed views/non-views,
+    # so allocate separate vectors for each thread instead of
+    # an `Matrix{T}(undef, sz[2], nthreads())`. Try using UnsafeArrays
+    # here instead of standard views?
+    xs = [Vector{T}(undef, sz[2]) for i in 1:nthreads()]
+    for x in xs
+        fill!(x, zero(T))
+    end
     @threads for j in Base.OneTo(sz[2])
         col = view(A, :, j-1+first_j_A)
-        x = view(X, :, threadid())
-        j_x = j-1+first_j_X
+        x = xs[threadid()]
+        first_j_x = firstindex(x, 1)
+        j_x = j-1+first_j_x
         x[j_x] = one(T)
         col .= ovp(x)
         x[j_x] = zero(T)
