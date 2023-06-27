@@ -15,8 +15,10 @@ of these different AD-backend-speficiers.
 Examples:
 
 ```
+ADModule(:FiniteDifferences)
 ADModule(:ForwardDiff)
 ADModule(:Zygote)
+ADModule(:Enzyme)
 ```
 
 Can be converted to a `Val` for compatibily with approaches like

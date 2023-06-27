@@ -23,7 +23,7 @@ function test_adsel_functionality(ad::ADSelector)
         grad_g_x_ref = ForwardDiff.gradient(g, x)
 
         f_nv(x) = sum(x.a .* x.a) * x.b
-        x_nv = (a = [1.0, 2.0], b = 2)
+        x_nv = (a = [1.0, 2.0], b = 2.0)
         y_nv_ref = 10.0
         grad_nv_ref = (a = [4.0, 8.0], b = 5.0)
 
