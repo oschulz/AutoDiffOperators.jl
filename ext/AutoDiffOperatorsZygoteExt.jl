@@ -74,8 +74,8 @@ function AutoDiffOperators.with_vjp_func(f, x, ::ZygoteAD)
 end
 
 
-function AutoDiffOperators.jacobian_matrix(f, x::AbstractVector{<:Real}, ::ZygoteAD)
-    only(Zygote.jacobian(f, x))
+function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::ZygoteAD)
+    f(x), only(Zygote.jacobian(f, x))
 end
 
 

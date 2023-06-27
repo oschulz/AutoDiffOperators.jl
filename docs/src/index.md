@@ -6,9 +6,7 @@ AutoDiffOperators.jl uses AD-backend abstractions and supports a subset of the A
 
 AD-backends are specified via subtypes of [`ADSelector`](@ref), separate backends for forward and reverse mode AD can be specified if desired. Different AD specifiers that refer to the same AD-backend can be converted into each other via [`convert_ad`](@ref).
 
-The main functions are [`with_gradient`](@ref) and [`with_jacobian`](@ref). Explicit Jacobian matrices can be obtained via [`jacobian_matrix`](@ref). The central lower-level functions are [`with_jvp`](@ref) and [`with_vjp_func`](@ref).
-
-Operators (as returned from [`with_jacobian`](@ref)) can be converted to a [LinearMaps.LinearMap](https://github.com/JuliaLinearAlgebra/LinearMaps.jl).
+The main functions are [`with_gradient`](@ref) and [`with_jacobian`](@ref). The central lower-level functions are [`with_jvp`](@ref) and [`with_vjp_func`](@ref). Jacobian operators can be implicit (e.g. a [`LinearMap`/`FunctionMap`](https://github.com/JuliaLinearAlgebra/LinearMaps.jl) or similar) or explixit (i.e. a `Matrix`).
 
 Different Julia packages require function and gradient calculation to be passed in a different fashion. AutoDiffOperators provides
 

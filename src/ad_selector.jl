@@ -82,9 +82,8 @@ The following functions must be specialized for subtypes of `ADSelector`:
 [`convert_ad`](@ref), [`with_jvp`](@ref), [`with_vjp_func`](@ref) and
 [`AutoDiffOperators.supports_structargs`](@ref)
 
-Default implementations are provided for [`jacobian_matrix`](@ref) and
-[`with_gradient`](@ref), but specialized implementations may often
-be more performant.
+A default implementation is provided for [`with_gradient`](@ref), but
+specialized implementations may often be more performant.
 
 Selector types that forward forward and reverse-mode ad to
 other selector types should specialize [`forward_ad_selector`](@ref)

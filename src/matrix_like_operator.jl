@@ -90,6 +90,15 @@ Base.transpose(op::MatrixLikeOperator{<:Real}) = adjoint(op)
 transpose_op_mul(op::MatrixLikeOperator{<:Real}, x::AbstractVector{<:Real}) = adjoint_op_mul(op, x)
 
 
+function mulfunc_operator(
+    ::Type{MatrixLikeOperator},
+    ::Type{T}, sz::Dims{2}, ovp, vop,
+    ::Val{sym}, ::Val{herm}, ::Val{posdef}
+) where {T<:Real, sym, herm, posdef}
+    _MulFuncOperator{T,sym,herm,posdef}(ovp, vop, Dims(sz))
+end
+
+
 """
     struct AutoDiffOperators.AdjointMatrixLikeOperator{T<:Number,sym,herm,posdef} <: MatrixLikeOperator{T,sym,herm,posdef}
 
@@ -260,7 +269,7 @@ end
 
 
 function _op_copyto_impl!(A::AbstractMatrix{<:Number}, op::MatrixLikeOperator)
-    first_j_A = firstindex(A, 1)
+    first_j_A = firstindex(A, 2)
     first_j_op = firstindex(op, 1)
     Base.Threads.@threads for j in Base.OneTo(size(op, 2))
         _get_column!(view(A, :, j-1+first_j_A), op, j-1+first_j_op)

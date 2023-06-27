@@ -1,50 +1,45 @@
 # This file is a part of AutoDiffOperators.jl, licensed under the MIT License (MIT).
 
 
-"""
-    jacobian_matrix(f, x, ad::ADSelector)
-
-Returns the explicit Jacobian matrix of `f` at `x`
-
-The Jacobian matrix is computed using the automatic differentiation backend
-selected by `ad`.
-"""
-function jacobian_matrix end
-export jacobian_matrix
-
-jacobian_matrix(f, x, ad::FwdRevADSelector) = jacobian_matrix(f, x, forward_ad_selector(ad))
-
-function jacobian_matrix(f, x, ad::ADSelector)
-    J = with_jacobian(f, x, ad)[2]
-    J_matrix = similar(x, size(J))
-    copyto!(J_matrix, J)
-    return J_matrix
-end
+@deprecate jacobian_matrix(f, x, ad::ADSelector) with_jacobian(f, x, Matrix, ad)[2]
 
 
 """
-    with_jacobian(f, x, ad::ADSelector)
+    with_jacobian(f, x, OP, ad::ADSelector)
 
-Returns a tuple `(f(x), J)` with a multiplicative Jabobian operator `J.
+Returns a tuple `(f(x), J)` with a multiplicative Jabobian operator `J`
+of type `OP`.
 
-`J` behaves like jacobian_matrix(f, x, ad) in respect to
-multiplication:
+Example:
 
 ```julia
-y, J = with_jacobian(f, x, ad)
+using AutoDiffOperators, LinearMaps
+y, J = with_jacobian(f, x, LinearMap, ad)
 y == f(x)
-J_explicit = jacobian_matrix(f, x, ad)
-J * z ≈ J_explicit * z
-z * J ≈ z * J_explicit
+_, J_explicit = with_jacobian(f, x, Matrix, ad)
+J * z_r ≈ J_explicit * z_r
+z_l' * J ≈ z_l' * J_explicit
 ```
 
-The default implementation of `with_jacobian` relies on
-[`with_vjp_func`](@ref) and [`jvp_func`](@ref).
+`OP` may be
+[`LinearMaps.LinearMap`](https://github.com/JuliaLinearAlgebra/LinearMaps.jl)
+(resp. `LinearMaps.FunctionMap`) or `Matrix`. Other operator types can be
+supported by specializing
+[`AutoDiffOperators.mulfunc_operator`](@ref) for the operator type.
+
+The default implementation of `with_jacobian` uses
+[`jvp_func`](@ref) and [`with_vjp_func`](@ref) to implement (adjoint)
+multiplication of `J` with (adjoint) vectors.
 """
-function with_jacobian(f, x::AbstractVector{T}, ad::ADSelector) where T
+function with_jacobian end
+
+@deprecate with_jacobian(f, x::AbstractVector{<:Real}, ad::ADSelector) with_jacobian(f, x, MatrixLikeOperator, ad)
+
+function with_jacobian(f, x::AbstractVector{T}, ::Type{OP}, ad::ADSelector) where {T<:Real,OP}
     y, vjp = with_vjp_func(f, x, ad)
     jvp = jvp_func(f, x, ad)
-    J = MatrixLikeOperator{T,false,false,false}(jvp, vjp, (size(y,1), size(x,1)))
+    sz = Dims((size(y,1), size(x,1)))
+    J = mulfunc_operator(OP, T, sz, jvp, vjp, Val(false), Val(false), Val(false))
     return y, J
 end
 export with_jacobian

@@ -49,10 +49,6 @@ function AutoDiffOperators.with_gradient!!(f, δx::AbstractVector{<:Real}, x::Ab
 end
 
 
-# ToDo: Specialize?
-# AutoDiffOperators.jacobian_matrix(f, x::AbstractVector{<:Real}, ad::EnzymeAD)
-
-
 function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ::EnzymeAD)
     f_x, J_z = autodiff(Forward, f, Duplicated, Duplicated(x, z))
     return f_x, J_z
@@ -128,6 +124,11 @@ end
 
 
 # ToDo: Broadcast specialization of functions returned by `with_vjp_func` for multiple z-values.
+
+
+function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::EnzymeAD)
+    f(x), Enzyme.jacobian(Enzyme.Forward, f, x)
+end
 
 
 end # module Enzyme

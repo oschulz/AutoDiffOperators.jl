@@ -1,6 +1,10 @@
 # This file is a part of AutoDiffOperators.jl, licensed under the MIT License (MIT).
 
 using AutoDiffOperators
+using Test
+
+using ForwardDiff
+using LinearMaps
 
 include("approx_cmp.jl")
 
@@ -23,12 +27,16 @@ function test_adsel_functionality(ad::ADSelector)
         y_nv_ref = 10.0
         grad_nv_ref = (a = [4.0, 8.0], b = 5.0)
 
-        wj_y, J = with_jacobian(f, x, ad)
+        @test_deprecated typeof(with_jacobian(f, x, ad)) == typeof(with_jacobian(f, x, MatrixLikeOperator, ad))
+        wj_y, J = with_jacobian(f, x, MatrixLikeOperator, ad)
         @test wj_y ≈ y_f_ref
         @test Matrix(J) ≈ J_f_ref
+        @test with_jacobian(f, x, LinearMap, ad)[2] isa FunctionMap
+        @test Matrix(with_jacobian(f, x, LinearMap, ad)[2]) ≈ J_f_ref
         @test J * J_z_r ≈ J_f_ref * J_z_r
         @test J_z_l' * J ≈ J_z_l' * J_f_ref
-        @test jacobian_matrix(f, x, ad) ≈ J_f_ref
+        @test approx_cmp(with_jacobian(f, x, Matrix, ad), (y_f_ref, J_f_ref))
+        @test_deprecated jacobian_matrix(f, x, ad) ≈ J_f_ref
         @test with_gradient(g, x, ad)[1] ≈ y_g_ref
         @test with_gradient(g, x, ad)[2] ≈ grad_g_x_ref
 

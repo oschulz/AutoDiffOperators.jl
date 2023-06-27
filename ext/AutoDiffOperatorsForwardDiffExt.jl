@@ -78,7 +78,9 @@ end
 
 
 # ToDo: Use AD parameters
-AutoDiffOperators.jacobian_matrix(f, x::AbstractVector{<:Real}, ad::ForwardDiffAD) = ForwardDiff.jacobian(f, x)
+function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::ForwardDiffAD)
+    f(x), ForwardDiff.jacobian(f, x)
+end
 
 
 # ToDo: Use AD parameters
