@@ -26,6 +26,8 @@ const ZygoteAD = Union{
 }
 
 
+AutoDiffOperators.supports_structargs(::ZygoteAD) = true
+
 AutoDiffOperators.forward_ad_selector(::ADTypes.AutoZygote) = AbstractDifferentiation.ForwardDiffBackend()
 
 AutoDiffOperators.forward_ad_selector(::AbstractDifferentiation_ZygoteBackend) =
@@ -66,7 +68,7 @@ function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVec
 end
 
 
-function AutoDiffOperators.with_vjp_func(f, x::AbstractVector{<:Real}, ::ZygoteAD)
+function AutoDiffOperators.with_vjp_func(f, x, ::ZygoteAD)
     y, pullback = Zygote.pullback(f, x)
     return y, fchain(pullback, only)
 end

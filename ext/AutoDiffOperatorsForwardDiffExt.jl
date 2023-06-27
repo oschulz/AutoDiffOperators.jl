@@ -21,6 +21,9 @@ const ForwardDiffAD = Union{
     AutoDiffOperators.ADModule{:ForwardDiff}
 }
 
+
+AutoDiffOperators.supports_structargs(::ForwardDiffAD) = false
+
 # ToDo: Convert AD parameters
 function AutoDiffOperators.convert_ad(::Type{ADTypes.AbstractADType}, ad::AbstractDifferentiation.ForwardDiffBackend)
     ADTypes.AutoForwardDiff()

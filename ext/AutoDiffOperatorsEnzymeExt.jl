@@ -20,6 +20,10 @@ const EnzymeAD = Union{
     AutoDiffOperators.ADModule{:Enzyme}
 }
 
+
+# ToDo: Support structured arguments (since Enzyme itself is capable of it).
+AutoDiffOperators.supports_structargs(::EnzymeAD) = false
+
 # ToDo: Add custom selector for Enzyme that contains chunk size, etc.
 
 # No AbstractDifferentiation doesn't have a backend for Enzyme yet.

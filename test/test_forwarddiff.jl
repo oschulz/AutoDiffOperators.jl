@@ -29,6 +29,9 @@ include("testutils.jl")
         @testset "fwd and rev for $ad" begin
             @test @inferred(forward_ad_selector(ad)) == ad
             @test @inferred(reverse_ad_selector(ad)) == ad
+
+            @test @inferred(AutoDiffOperators.supports_structargs(forward_ad_selector(ad))) == false
+            @test @inferred(AutoDiffOperators.supports_structargs(reverse_ad_selector(ad))) == false
         end
 
         test_adsel_functionality(ad)

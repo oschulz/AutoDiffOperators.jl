@@ -79,7 +79,8 @@ Some operations that specifically require forward-mode or reverse-mode
 AD will only accept a subset of these backends though.
 
 The following functions must be specialized for subtypes of `ADSelector`:
-[`convert_ad`](@ref), [`with_jvp`](@ref) and [`with_vjp_func`](@ref).
+[`convert_ad`](@ref), [`with_jvp`](@ref), [`with_vjp_func`](@ref) and
+[`AutoDiffOperators.supports_structargs`](@ref)
 
 Default implementations are provided for [`jacobian_matrix`](@ref) and
 [`with_gradient`](@ref), but specialized implementations may often
@@ -139,6 +140,20 @@ function reverse_ad_selector end
 export reverse_ad_selector
 
 reverse_ad_selector(ad::ADSelector) = ad
+
+
+"""
+    AutoDiffOperators.supports_structargs(ad::ADSelector)::Boolean
+
+Returns `true` if `ad` supports structured function arguments or `false` if
+`ad` only supports vectors of real numbers.
+
+Since `ad` may use different backends for forward- and reverse-mode
+AD, use `supports_structargs(forward_ad_selector(ad))` and 
+`supports_structargs(reverse_ad_selector(ad))` to check if `ad` supports
+structured arguments for the desired operation.
+"""
+function supports_structargs end
 
 
 
