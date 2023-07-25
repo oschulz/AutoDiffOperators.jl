@@ -128,7 +128,11 @@ end
 @static if VERSION >= v"1.9"
     # Causes crashes on (at least) Julia v1.6:
     function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::EnzymeAD)
-        f(x), Enzyme.jacobian(Enzyme.Forward, f, x)
+        y = f(x)
+        R = promote_type(eltype(x), eltype(y))
+        J = similar(y, R, (length(y), length(x)))
+        J[:,:] = Enzyme.jacobian(Enzyme.Forward, f, x) # Enzyme.jacobian is not type-stable
+        f(x), J
     end
 end
 

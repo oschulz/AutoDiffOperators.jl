@@ -75,7 +75,11 @@ end
 
 
 function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::ZygoteAD)
-    f(x), only(Zygote.jacobian(f, x))
+    y = f(x)
+    R = promote_type(eltype(x), eltype(y))
+    J = similar(y, R, (length(y), length(x)))
+    J[:,:] = only(Zygote.jacobian(f, x)) # Zygote.[with]jacobian is not type-stable
+    f(x), J
 end
 
 

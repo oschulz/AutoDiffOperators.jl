@@ -35,7 +35,7 @@ function test_adsel_functionality(ad::ADSelector)
         @test Matrix(with_jacobian(f, x, LinearMap, ad)[2]) ≈ J_f_ref
         @test J * J_z_r ≈ J_f_ref * J_z_r
         @test J_z_l' * J ≈ J_z_l' * J_f_ref
-        @test approx_cmp(with_jacobian(f, x, Matrix, ad), (y_f_ref, J_f_ref))
+        @test approx_cmp(@inferred(with_jacobian(f, x, Matrix, ad)), (y_f_ref, J_f_ref))
         @test_deprecated jacobian_matrix(f, x, ad) ≈ J_f_ref
         @test with_gradient(g, x, ad)[1] ≈ y_g_ref
         @test with_gradient(g, x, ad)[2] ≈ grad_g_x_ref
