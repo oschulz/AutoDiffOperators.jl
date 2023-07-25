@@ -81,7 +81,8 @@ end
 function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::ForwardDiffAD)
     y = f(x)
     R = promote_type(eltype(x), eltype(y))
-    J = similar(y, R, (length(y), length(x)))
+    n_y, n_x = length(y), length(x)
+    J = similar(y, R, (n_y, n_x))
     J[:,:] = ForwardDiff.jacobian(f, x) # ForwardDiff.jacobian is not type-stable
     f(x), J
 end

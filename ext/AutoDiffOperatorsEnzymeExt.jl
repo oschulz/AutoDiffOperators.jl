@@ -130,8 +130,13 @@ end
     function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::EnzymeAD)
         y = f(x)
         R = promote_type(eltype(x), eltype(y))
-        J = similar(y, R, (length(y), length(x)))
-        J[:,:] = Enzyme.jacobian(Enzyme.Forward, f, x) # Enzyme.jacobian is not type-stable
+        n_y, n_x = length(y), length(x)
+        J = similar(y, R, (n_y, n_x))
+        if 4 * n_y < n_x && n_y <= 8  # Heuristic
+            J[:,:] = Enzyme.jacobian(Enzyme.Reverse, f, x, Val(n_y)) # Enzyme.jacobian is not type-stable
+        else
+            J[:,:] = Enzyme.jacobian(Enzyme.Forward, f, x) # Enzyme.jacobian is not type-stable
+        end
         f(x), J
     end
 end
