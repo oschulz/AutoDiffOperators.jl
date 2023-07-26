@@ -68,9 +68,29 @@ function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVec
 end
 
 
+
 function AutoDiffOperators.with_vjp_func(f, x, ::ZygoteAD)
-    y, pullback = Zygote.pullback(f, x)
-    return y, fchain(pullback, only)
+    y = f(x)
+    _, pullback = Zygote.pullback(f, x)
+    _with_vjp_func_result(x, y, pullback)
+end
+
+_with_vjp_func_result(::Any, y::Any, pullback) = y, only ∘ pullback
+
+function _with_vjp_func_result(x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, pullback)
+    f_vjp = _ZygoteRealVecVJP(pullback, size(x, 1))
+    return y, f_vjp
+end
+
+struct _ZygoteRealVecVJP <: Function
+    pullback::Function
+    n_x::Int
+end
+
+function (f::_ZygoteRealVecVJP)(z::AbstractVector{<:Real})
+    result = similar(z, f.n_x)
+    result[:] = only(f.pullback(z))
+    return result
 end
 
 
