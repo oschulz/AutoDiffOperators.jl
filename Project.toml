@@ -26,7 +26,7 @@ AutoDiffOperatorsLinearMapsExt = "LinearMaps"
 AutoDiffOperatorsZygoteExt = "Zygote"
 
 [compat]
-ADTypes = "0.1"
+ADTypes = "0.1, 0.2"
 AbstractDifferentiation = "0.5"
 AffineMaps = "0.2"
 Enzyme = "0.11"
