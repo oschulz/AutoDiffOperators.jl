@@ -5,5 +5,5 @@ import Aqua
 import AutoDiffOperators
 
 Test.@testset "Aqua tests" begin
-    Aqua.test_all(AutoDiffOperators, project_toml_formatting=VERSION≥v"1.7")
+    Aqua.test_all(AutoDiffOperators)
 end # testset
