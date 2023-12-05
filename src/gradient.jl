@@ -43,6 +43,19 @@ export with_gradient!!
 with_gradient!!(f, @nospecialize(δx), x, ad::ADSelector) = with_gradient(f, x, ad::ADSelector)
 
 
+"""
+    only_gradient(f, x, ad::ADSelector)
+
+Returns the gradient ∇f(x) of `f` at `x`.
+
+See also [`with_gradient(f, x, ad)`](@ref).
+"""
+function only_gradient end
+export only_gradient
+
+only_gradient(f, x, ad::ADSelector) = with_gradient(f, x, ad)[2]
+
+
 
 struct _ValGradFunc{F,AD} <: Function
     f::F
@@ -72,7 +85,7 @@ struct _GenericGradientFunc{F,AD} <: Function
 end
 _GenericGradientFunc(::Type{FT}, ad::AD) where {FT,AD<:ADSelector}  = _GenericGradientFunc{Type{FT},AD}(FT, ad)
 
-(f::_GenericGradientFunc)(x) = with_gradient(f.f, x, f.ad)[2]
+(f::_GenericGradientFunc)(x) = only_gradient(f.f, x, f.ad)
 
 """
     gradient_func(f, ad::ADSelector)

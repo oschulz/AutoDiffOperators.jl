@@ -39,6 +39,7 @@ function test_adsel_functionality(ad::ADSelector)
         @test_deprecated jacobian_matrix(f, x, ad) ≈ J_f_ref
         @test with_gradient(g, x, ad)[1] ≈ y_g_ref
         @test with_gradient(g, x, ad)[2] ≈ grad_g_x_ref
+        @test only_gradient(g, x, ad) ≈ grad_g_x_ref
 
         let δx = similar(x)
             fill!(δx, NaN)
@@ -57,6 +58,7 @@ function test_adsel_functionality(ad::ADSelector)
 
         if AutoDiffOperators.supports_structargs(reverse_ad_selector(ad))
             @test approx_cmp(with_gradient(f_nv, x_nv, ad), (y_nv_ref, grad_nv_ref))
+            @test approx_cmp(only_gradient(f_nv, x_nv, ad), grad_nv_ref)
             @test approx_cmp(valgrad_func(f_nv, ad)(x_nv), (y_nv_ref, grad_nv_ref))
             @test approx_cmp(gradient_func(f_nv, ad)(x_nv), grad_nv_ref)
         end
