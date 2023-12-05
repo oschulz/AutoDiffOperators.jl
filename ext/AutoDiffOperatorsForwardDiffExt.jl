@@ -52,7 +52,36 @@ end
 
 
 # ToDo: Use AD parameters
-AutoDiffOperators.with_gradient(f, x::AbstractVector{<:Real}, ad::ForwardDiffAD) = f(x), ForwardDiff.gradient(f, x)
+function AutoDiffOperators.with_gradient(f, x::AbstractVector{<:Real}, ad::ForwardDiffAD)
+    T = typeof(x)
+    U = Core.Compiler.return_type(f, Tuple{typeof(x)})
+    y = f(x)
+    R = promote_type(eltype(x), eltype(y))
+    n_y, n_x = length(y), length(x)
+    dy = similar(x, R)
+    dy .= ForwardDiff.gradient(f, x)
+    return y, dy
+end
+
+
+function AutoDiffOperators.only_gradient(f, x, ad::ForwardDiffAD)
+    T = eltype(x)
+    U = Core.Compiler.return_type(f, Tuple{typeof(x)})
+    R = promote_type(T, U)
+    _only_gradient_impl(f, x, ad, R)
+end
+
+function _only_gradient_impl(f, x, ad::ForwardDiffAD, ::Type{R}) where {R <: Real}
+    dy = similar(x, R)
+    dy .= ForwardDiff.gradient(f, x)
+    return dy
+end
+
+function _only_gradient_impl(f, x, ad::ForwardDiffAD, ::Type)
+    return ForwardDiff.gradient(f, x)
+end
+
+
 
 # ToDo: Specialize `AutoDiffOperators.with_gradient!!(f, δx, x, ad::ForwardDiffAD)`
 
