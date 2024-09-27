@@ -2,11 +2,7 @@
 
 module AutoDiffOperatorsForwardDiffExt
 
-@static if isdefined(Base, :get_extension)
-    using ForwardDiff
-else
-    using ..ForwardDiff
-end
+using ForwardDiff
 
 import AutoDiffOperators
 import AbstractDifferentiation

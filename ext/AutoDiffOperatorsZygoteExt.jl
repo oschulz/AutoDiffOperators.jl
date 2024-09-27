@@ -2,11 +2,7 @@
 
 module AutoDiffOperatorsZygoteExt
 
-@static if isdefined(Base, :get_extension)
-    using Zygote
-else
-    using ..Zygote
-end
+using Zygote
 
 import AutoDiffOperators
 import AbstractDifferentiation

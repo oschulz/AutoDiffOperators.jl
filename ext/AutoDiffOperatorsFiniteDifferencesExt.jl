@@ -2,11 +2,7 @@
 
 module AutoDiffOperatorsFiniteDifferencesExt
 
-@static if isdefined(Base, :get_extension)
-    using FiniteDifferences
-else
-    using ..FiniteDifferences
-end
+using FiniteDifferences
 
 import AutoDiffOperators
 import AbstractDifferentiation

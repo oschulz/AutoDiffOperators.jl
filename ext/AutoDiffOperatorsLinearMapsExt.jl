@@ -2,11 +2,7 @@
 
 module AutoDiffOperatorsLinearMapsExt
 
-@static if isdefined(Base, :get_extension)
-    using LinearMaps
-else
-    using ..LinearMaps
-end
+using LinearMaps
 
 import AutoDiffOperators
 

@@ -8,14 +8,12 @@ AbstractDifferentiation = "c29ec348-61ec-40c8-8164-b8c60e9d9f3d"
 AffineMaps = "2c83c9a8-abf5-4329-a0d7-deffaf474661"
 FunctionChains = "8e6b2b91-af83-483e-ba35-d00930e4cf9b"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 
 [weakdeps]
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 LinearMaps = "7a12625a-238d-50fd-b39a-03d52299707e"
-Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [extensions]
@@ -35,13 +33,5 @@ ForwardDiff = "0.10"
 FunctionChains = "0.1"
 LinearAlgebra = "1"
 LinearMaps = "3"
-Requires = "1"
 Zygote = "0.6"
 julia = "1.10"
-
-[extras]
-Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
-FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
-ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
-LinearMaps = "7a12625a-238d-50fd-b39a-03d52299707e"
-Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"

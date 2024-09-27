@@ -2,11 +2,7 @@
 
 module AutoDiffOperatorsEnzymeExt
 
-@static if isdefined(Base, :get_extension)
-    using Enzyme
-else
-    using ..Enzyme
-end
+using Enzyme
 
 import AutoDiffOperators
 import AbstractDifferentiation
