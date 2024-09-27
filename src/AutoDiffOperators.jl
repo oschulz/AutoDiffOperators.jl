@@ -18,7 +18,6 @@ using AffineMaps: Mul
 using FunctionChains: fchain
 
 include("mulfunc_operator.jl")
-include("matrix_like_operator.jl")
 include("ad_selector.jl")
 include("jacobian.jl")
 include("gradient.jl")

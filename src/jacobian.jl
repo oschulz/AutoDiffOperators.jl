@@ -33,8 +33,6 @@ multiplication of `J` with (adjoint) vectors.
 """
 function with_jacobian end
 
-@deprecate with_jacobian(f, x::AbstractVector{<:Real}, ad::ADSelector) with_jacobian(f, x, MatrixLikeOperator, ad)
-
 function with_jacobian(f, x::AbstractVector{T}, ::Type{OP}, ad::ADSelector) where {T<:Real,OP}
     y, vjp = with_vjp_func(f, x, ad)
     jvp = jvp_func(f, x, ad)

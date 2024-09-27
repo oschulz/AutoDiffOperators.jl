@@ -27,12 +27,10 @@ function test_adsel_functionality(ad::ADSelector)
         y_nv_ref = 10.0
         grad_nv_ref = (a = [4.0, 8.0], b = 5.0)
 
-        @test_deprecated typeof(with_jacobian(f, x, ad)) == typeof(with_jacobian(f, x, MatrixLikeOperator, ad))
-        wj_y, J = @inferred with_jacobian(f, x, MatrixLikeOperator, ad)
+        wj_y, J = @inferred with_jacobian(f, x, LinearMap, ad)
         @test wj_y ≈ y_f_ref
+        @test J isa FunctionMap
         @test Matrix(J) ≈ J_f_ref
-        @test with_jacobian(f, x, LinearMap, ad)[2] isa FunctionMap
-        @test Matrix(with_jacobian(f, x, LinearMap, ad)[2]) ≈ J_f_ref
         @test @inferred(J * J_z_r) ≈ J_f_ref * J_z_r
         @test @inferred(J_z_l' * J) ≈ J_z_l' * J_f_ref
         @test approx_cmp(@inferred(with_jacobian(f, x, Matrix, ad)), (y_f_ref, J_f_ref))
