@@ -5,43 +5,23 @@ module AutoDiffOperatorsFiniteDifferencesExt
 using FiniteDifferences
 
 import AutoDiffOperators
-import AbstractDifferentiation
 import ADTypes
-
-
-Base.Module(::AutoDiffOperators.ADModule{:FiniteDifferences}) = FiniteDifferences
-
-const FiniteDifferencesAD = Union{
-    AbstractDifferentiation.FiniteDifferencesBackend,
-    AutoDiffOperators.ADModule{:FiniteDifferences}
-}
-
-
-AutoDiffOperators.supports_structargs(::FiniteDifferencesAD) = true
-
-
-# ADTypes doesn't have a backend for FiniteDifferences yet.
-
-function AutoDiffOperators.convert_ad(::Type{AbstractDifferentiation.AbstractBackend}, ::AutoDiffOperators.ADModule{:FiniteDifferences})
-    AbstractDifferentiation.FiniteDifferencesBackend(default_method)
-end
-
-function AutoDiffOperators.convert_ad(::Type{AutoDiffOperators.ADModule}, ad::AbstractDifferentiation.FiniteDifferencesBackend)
-    AutoDiffOperators.ADModule{:FiniteDifferences}()
-end
+using ADTypes: AutoFiniteDifferences
 
 
 const default_method = FiniteDifferences.central_fdm(5, 1)
-_get_method(ad::AbstractDifferentiation.FiniteDifferencesBackend) = ad.method
-_get_method(::AutoDiffOperators.ADModule{:FiniteDifferences}) = default_method
+@inline AutoDiffOperators.ADSelector(::Val{:FiniteDifferences}) = AutoFiniteDifferences(fdm = default_method)
 
 
-function AutoDiffOperators.with_gradient(f, x, ad::FiniteDifferencesAD)
+_get_method(ad::AutoFiniteDifferences) = ad.fdm
+
+
+function AutoDiffOperators.with_gradient(f, x, ad::AutoFiniteDifferences)
     f(x), only(FiniteDifferences.grad(_get_method(ad), f, x))
 end
 
 
-function AutoDiffOperators.with_jvp(f, x, z, ad::FiniteDifferencesAD)
+function AutoDiffOperators.with_jvp(f, x, z, ad::AutoFiniteDifferences)
     f(x), FiniteDifferences.jvp(_get_method(ad), f, (x, z))
 end
 
@@ -57,12 +37,12 @@ function (vjp::_FiniteDifferencesVJPFunc)(z)
     only(FiniteDifferences.j′vp(vjp.method, vjp.f, z, vjp.x))
 end
 
-function AutoDiffOperators.with_vjp_func(f, x, ad::FiniteDifferencesAD)
+function AutoDiffOperators.with_vjp_func(f, x, ad::AutoFiniteDifferences)
     f(x), _FiniteDifferencesVJPFunc(f, x, _get_method(ad))
 end
 
 
-function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::FiniteDifferencesAD)
+function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::AutoFiniteDifferences)
     f(x), only(FiniteDifferences.jacobian(_get_method(ad), f, x))
 end
 

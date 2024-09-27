@@ -4,36 +4,31 @@ using AutoDiffOperators
 using Test
 
 using LinearAlgebra
-using AbstractDifferentiation, ADTypes
-using ForwardDiff
+using ADTypes: AutoForwardDiff
+import ForwardDiff
 
 include("testutils.jl")
 
 
-@testset "test_forwarddiff.jl" begin
-    @test @inferred(convert_ad(AbstractDifferentiation.AbstractBackend, ADTypes.AutoForwardDiff())) isa AbstractDifferentiation.ForwardDiffBackend
-    @test @inferred(convert_ad(AbstractDifferentiation.AbstractBackend, AbstractDifferentiation.ForwardDiffBackend())) isa AbstractDifferentiation.ForwardDiffBackend
-    @test @inferred(convert_ad(AbstractDifferentiation.AbstractBackend, AutoDiffOperators.ADModule(:ForwardDiff))) isa AbstractDifferentiation.ForwardDiffBackend
-    @test @inferred(convert_ad(ADTypes.AbstractADType, ADTypes.AutoForwardDiff())) isa ADTypes.AutoForwardDiff
-    @test @inferred(convert_ad(ADTypes.AbstractADType, AbstractDifferentiation.ForwardDiffBackend())) isa ADTypes.AutoForwardDiff
-    @test @inferred(convert_ad(ADTypes.AbstractADType, AutoDiffOperators.ADModule(:ForwardDiff))) isa ADTypes.AutoForwardDiff
-    @test @inferred(convert_ad(AutoDiffOperators.ADModule, ADTypes.AutoForwardDiff())) isa AutoDiffOperators.ADModule
-    @test @inferred(convert_ad(AutoDiffOperators.ADModule, AbstractDifferentiation.ForwardDiffBackend())) isa AutoDiffOperators.ADModule
-    @test @inferred(convert_ad(AutoDiffOperators.ADModule, AutoDiffOperators.ADModule(:ForwardDiff))) isa AutoDiffOperators.ADModule
+@testset "test ForwardDiff" begin
+    ADT = AutoForwardDiff
+    ad_module = ForwardDiff
+    structargs = false
+    ad = ADSelector(ad_module)
+    fwd_adsel = ad
+    rev_adsel = ad
 
-    for ad in (
-        AbstractDifferentiation.ForwardDiffBackend(),
-        ADTypes.AutoForwardDiff(),
-        AutoDiffOperators.ADModule(:ForwardDiff),
-    )
-        @testset "fwd and rev for $ad" begin
-            @test @inferred(forward_ad_selector(ad)) == ad
-            @test @inferred(reverse_ad_selector(ad)) == ad
+    @test ADSelector(Val(nameof(ad_module))) isa ADT
+    @test ADSelector(nameof(ad_module)) isa ADT
+    @test ADSelector(ad_module) isa ADT
+    @test_deprecated ADModule(:ForwardDiff) isa ADT
+    @test_deprecated ADModule(ForwardDiff) isa ADT
 
-            @test @inferred(AutoDiffOperators.supports_structargs(forward_ad_selector(ad))) == false
-            @test @inferred(AutoDiffOperators.supports_structargs(reverse_ad_selector(ad))) == false
-        end
-
-        test_adsel_functionality(ad)
+    @testset "fwd and rev sel for $ad" begin
+        @test @inferred(forward_ad_selector(ad)) == fwd_adsel
+        @test @inferred(reverse_ad_selector(ad)) == rev_adsel
+        @test @inferred(AutoDiffOperators.supports_structargs(ad)) == false
     end
+
+    test_adsel_functionality(ad)
 end

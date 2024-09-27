@@ -14,10 +14,4 @@
 * [Documentation for development version](https://oschulz.github.io/AutoDiffOperators.jl/dev)
 
 This package provides multiplicative operators that act via automatic
-differentiation (AD).
-
-AutoDiffOperators.jl uses AD-backend abstractions and supports a subset of the AD-backends
-specifiers in both
-[AbstractDifferentiation.jl](https://github.com/JuliaDiff/AbstractDifferentiation.jl)
-and [ADTypes.jl](https://github.com/SciML/ADTypes.jl). Support for additional
-AD-backends is planned.
+differentiation (AD), as well as additional AD-related functionality.

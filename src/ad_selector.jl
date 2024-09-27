@@ -1,120 +1,66 @@
 # This file is a part of AutoDiffOperators.jl, licensed under the MIT License (MIT).
 
 
+@deprecate ADModule(m::Symbol) ADSelector(m)
+@deprecate ADModule(m::Module) ADSelector(m)
+
+
 """
-    struct ADModule{m}
+    abstract type AutoDiffOperators.WrappedADSelector 
 
-Speficies and automatic differentiation backend via it's module name.
-
-We recommend to use the AD-backend types defined in
-[AbstractDifferentiation.jl](https://github.com/JuliaDiff/AbstractDifferentiation.jl)
-and [ADTypes.jl}(https://github.com/SciML/ADTypes.jl) instead of `ADModule`.
-The function [`convert_ad`](@ref) provides a conversion mechanism between all
-of these different AD-backend-speficiers.
-
-Examples:
-
-```
-ADModule(:FiniteDifferences)
-ADModule(:ForwardDiff)
-ADModule(:Zygote)
-ADModule(:Enzyme)
-```
-
-Can be converted to a `Val` for compatibily with approaches like
-`LogDensityProblemsAD.ADgradient`
-(see [LogDensityProblemsAD](https://github.com/tpapp/LogDensityProblemsAD.jl)):
-
-```julia
-Val(ADModule(:ForwardDiff)) == Val(:ForwardDiff)
-```
-
-Constructing an instance of `ADModule` will fail if the package hosting the
-corresponding module is not loaded (either directly, or indirectly via
-dependencies of other loaded packages).
-    
-`Module(ad::ADModule)` returns the `Module` object that corresponds
-to `ad`.
+Supertype for AD selectors that wrap other AD selectors.
 """
-struct ADModule{m}
-    function ADModule{m}() where m
-        ad = new{m}()
-        Module(ad) # will fail if m is not loaded
-        return ad
-    end
-end
-export ADModule
-
-function Base.Module(@nospecialize ad::ADModule{m}) where m
-    throw(ErrorException("Cannot get `Module($ad)`, $m is either not loaded (directly or indirectly) or not supported by AutoDiffOperators."))
-end
-
-ADModule(m::Symbol) = ADModule{m}()
-ADModule(m::Module) = ADModule{nameof(m)}()
-
-Base.Val(::Type{ADModule{m}}) where m = Val(m)
-Base.convert(::Type{Val}, ad::ADModule) = Val(ad)
+abstract type WrappedADSelector end
 
 
 """
     const ADSelector = Union{
-        AbstractDifferentiation.AbstractBackend,
         ADTypes.AbstractADType,
-        ADModule
+        WrappedADSelector
     }
 
 Instances speficy an automatic differentiation backend.
 
-Unifies the AD-backend selector types defined in
-[AbstractDifferentiation.jl](https://github.com/JuliaDiff/AbstractDifferentiation.jl)
-and [ADTypes.jl}(https://github.com/SciML/ADTypes.jl), as well as
-[`AutoDiffOperators.ADModule`](@ref).
+Either a subtype of
+[`ADTypes.AbstractADType`]](https://github.com/SciML/ADTypes.jl),
+or an AD-selector wrapper like [`AutoDiffOperators.FwdRevADSelector`](@ref).
 
-AutoDiffOperators currently supports the following AD-backends, and its
-functions will, in general, accept any subtype of `ADSelector` as
-AD-selectors that match them:
-
-* ForwardDiff
-* Zygote
+AutoDiffOperators currently provides it's own implementations for following
+AD-selectors: `AutoForwardDiff()`, `AutoFiniteDifferences()`, `AutoZygote()`
+and `AutoEnzyme()`.
 
 Some operations that specifically require forward-mode or reverse-mode
 AD will only accept a subset of these backends though.
 
+Alternatively,
+[`DifferentiationInterface``](https://github.com/gdalle/DifferentiationInterface.jl)
+can be used to interface with various AD-backends, by using
+`DiffIfAD(backend::ADTypes.AbstractADType)` as the AD-selector.
+
+# Implementation
+
 The following functions must be specialized for subtypes of `ADSelector`:
-[`convert_ad`](@ref), [`with_jvp`](@ref), [`with_vjp_func`](@ref) and
-[`AutoDiffOperators.supports_structargs`](@ref)
+[`with_jvp`](@ref), [`with_vjp_func`](@ref).
+
+[`AutoDiffOperators.supports_structargs`](@ref) should be specialized if
+applicable.
 
 A default implementation is provided for [`with_gradient`](@ref), but
 specialized implementations may often be more performant.
 
-Selector types that forward forward and reverse-mode ad to
-other selector types should specialize [`forward_ad_selector`](@ref)
+Selector types that delegate forward and/or reverse-mode AD to other selector
+types resp AD-backends should also specialize [`forward_ad_selector`](@ref)
 and [`reverse_ad_selector`](@ref).
 """
 const ADSelector = Union{
-    AbstractDifferentiation.AbstractBackend,
     ADTypes.AbstractADType,
-    ADModule
+    WrappedADSelector
 }
 export ADSelector
 
+@inline ADSelector(m::Symbol) = ADSelector(Val(m))
+@inline ADSelector(m::Module) = ADSelector(Val(nameof(m)))
 
-"""
-    convert_ad(::Type{AbstractDifferentiation.AbstractBackend}, ad::ADSelector)
-    convert_ad(::Type{ADTypes.AbstractADType}, ad::ADSelector)
-    convert_ad(::Type{ADModule}, ad::ADSelector)
-
-Converts AD-backend selector types between
-[AbstractDifferentiation.jl](https://github.com/JuliaDiff/AbstractDifferentiation.jl),
-[ADTypes.jl](https://github.com/SciML/ADTypes.jl) and
-[`AutoDiffOperators.ADModule`](@ref).
-"""
-function convert_ad end
-export convert_ad
-
-convert_ad(::Type{ADTypes.AbstractADType}, ad::ADTypes.AbstractADType) = ad
-convert_ad(::Type{AbstractDifferentiation.AbstractBackend}, ad::AbstractDifferentiation.AbstractBackend) = ad
-convert_ad(::Type{ADModule}, ad::ADModule) = ad
 
 
 """
@@ -156,30 +102,9 @@ structured arguments for the desired operation.
 """
 function supports_structargs end
 
+supports_structargs(::AbstractADType) = false
 
-
-"""
-    AutoDiffOperators.FwdRevADSelector{Fwd<:ADSelector,Rev<:ADSelector} <: ADSelector
-
-Represent an automatic differentiation backend that forwards
-forward-mode and reverse-mode AD to two separate selectors
-`fwd::ADSelector` and `rev::ADSelector`.
-
-User code should not instantiate `AutoDiffOperators.FwdRevADSelector`
-directly, but use `ADSelector(fwd, rev)` or
-`ADSelector(fwd = fwd, rev = rev)` instead.
-"""
-struct FwdRevADSelector{Fwd<:ADSelector,Rev<:ADSelector}
-    fwd::Fwd
-    rev::Rev
-end
-export FwdRevADSelector
-
-ADSelector(fwd::ADSelector, rev::ADSelector) = FwdRevADSelector(fwd, rev)
-ADSelector(fwd::ADSelector, ::Nothing) = fwd
-ADSelector(::Nothing, rev::ADSelector) = rev
-
-ADSelector(;fwd::ADSelector, rev::ADSelector) = FwdRevADSelector(fwd, rev)
-
-forward_ad_selector(ad::FwdRevADSelector) = ad.fwd
-reverse_ad_selector(ad::FwdRevADSelector) = ad.fwd
+supports_structargs(::AutoZygote) = true
+supports_structargs(::AutoFiniteDifferences) = true
+# ToDo: Support structured arguments in AutoDiffOperators Enzyme implementation (since Enzyme itself is capable of it).
+supports_structargs(::AutoEnzyme) = false

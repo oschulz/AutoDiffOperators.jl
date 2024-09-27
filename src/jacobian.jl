@@ -69,8 +69,6 @@ Returns a tuple `(f(x), J * z)`.
 function with_jvp end
 export with_jvp
 
-with_jvp(f, x, z, ad::FwdRevADSelector) = with_jvp(f, x, z, forward_ad_selector(ad))
-
 
 # ToDo: add `with_jvp!(f, Jz, x, z, ad::ADSelector)`?
 
@@ -83,8 +81,6 @@ Returns a tuple `(f(x), vjp)` with the function `vjp(z) ≈ J' * z`.
 function with_vjp_func end
 export with_vjp_func
 
-with_vjp_func(f, x, ad::FwdRevADSelector) = with_vjp_func(f, x, reverse_ad_selector(ad))
-
 
 
 struct _FwdModeVJPFunc{F,T<:AbstractVector{<:Real},AD<:ADSelector} <: Function
@@ -94,12 +90,6 @@ struct _FwdModeVJPFunc{F,T<:AbstractVector{<:Real},AD<:ADSelector} <: Function
 end
 _FwdModeVJPFunc(::Type{FT}, x::T, ad::AD) where {FT,T<:AbstractVector{<:Real},AD<:ADSelector}  = _FwdModeVJPFunc{Type{FT},T,AD}(FT, x, ad)
 
-function _similar_onehot(A::AbstractArray{<:Number}, ::Type{T}, n::Integer, i::Integer) where {T<:Number}
-    result = similar(A, T, (n,))
-    fill!(result, zero(T))
-    result[i] = one(T)
-    return result
-end
 
 function (vjp::_FwdModeVJPFunc)(z::AbstractVector{<:Real})
     # ToDo: Reduce memory allocation? Would require a `with_jvp!` function.
@@ -108,7 +98,7 @@ function (vjp::_FwdModeVJPFunc)(z::AbstractVector{<:Real})
     n = size(x, 1)
     result = similar(x, U)
     Base.Threads.@threads for i in eachindex(x)
-        tmp = _similar_onehot(x, U, n, i)
+        tmp = similar_onehot(x, U, n, i)
         result[i] = dot(z, with_jvp(f, x, tmp, ad)[2])
     end
     result

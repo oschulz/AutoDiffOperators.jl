@@ -5,50 +5,15 @@ module AutoDiffOperatorsForwardDiffExt
 using ForwardDiff
 
 import AutoDiffOperators
-import AbstractDifferentiation
 import ADTypes
+using ADTypes: AutoForwardDiff
 
 
-Base.Module(::AutoDiffOperators.ADModule{:ForwardDiff}) = ForwardDiff
-
-const ForwardDiffAD = Union{
-    AbstractDifferentiation.ForwardDiffBackend,
-    ADTypes.AutoForwardDiff,
-    AutoDiffOperators.ADModule{:ForwardDiff}
-}
-
-
-AutoDiffOperators.supports_structargs(::ForwardDiffAD) = false
-
-# ToDo: Convert AD parameters
-function AutoDiffOperators.convert_ad(::Type{ADTypes.AbstractADType}, ad::AbstractDifferentiation.ForwardDiffBackend)
-    ADTypes.AutoForwardDiff()
-end
-
-function AutoDiffOperators.convert_ad(::Type{ADTypes.AbstractADType}, ::AutoDiffOperators.ADModule{:ForwardDiff})
-    ADTypes.AutoForwardDiff()
-end
-
-# ToDo: Convert AD parameters
-function AutoDiffOperators.convert_ad(::Type{AbstractDifferentiation.AbstractBackend}, ad::ADTypes.AutoForwardDiff)
-    AbstractDifferentiation.ForwardDiffBackend()
-end
-
-function AutoDiffOperators.convert_ad(::Type{AbstractDifferentiation.AbstractBackend}, ::AutoDiffOperators.ADModule{:ForwardDiff})
-    AbstractDifferentiation.ForwardDiffBackend()
-end
-
-function AutoDiffOperators.convert_ad(::Type{AutoDiffOperators.ADModule}, ad::AbstractDifferentiation.ForwardDiffBackend)
-    AutoDiffOperators.ADModule{:ForwardDiff}()
-end
-
-function AutoDiffOperators.convert_ad(::Type{AutoDiffOperators.ADModule}, ad::ADTypes.AutoForwardDiff)
-    AutoDiffOperators.ADModule{:ForwardDiff}()
-end
+@inline AutoDiffOperators.ADSelector(::Val{:ForwardDiff}) = AutoForwardDiff()
 
 
 # ToDo: Use AD parameters
-function AutoDiffOperators.with_gradient(f, x::AbstractVector{<:Real}, ad::ForwardDiffAD)
+function AutoDiffOperators.with_gradient(f, x::AbstractVector{<:Real}, ad::AutoForwardDiff)
     T = typeof(x)
     U = Core.Compiler.return_type(f, Tuple{typeof(x)})
     y = f(x)
@@ -60,26 +25,26 @@ function AutoDiffOperators.with_gradient(f, x::AbstractVector{<:Real}, ad::Forwa
 end
 
 
-function AutoDiffOperators.only_gradient(f, x, ad::ForwardDiffAD)
+function AutoDiffOperators.only_gradient(f, x, ad::AutoForwardDiff)
     T = eltype(x)
     U = Core.Compiler.return_type(f, Tuple{typeof(x)})
     R = promote_type(T, U)
     _only_gradient_impl(f, x, ad, R)
 end
 
-function _only_gradient_impl(f, x, ad::ForwardDiffAD, ::Type{R}) where {R <: Real}
+function _only_gradient_impl(f, x, ad::AutoForwardDiff, ::Type{R}) where {R <: Real}
     dy = similar(x, R)
     dy .= ForwardDiff.gradient(f, x)
     return dy
 end
 
-function _only_gradient_impl(f, x, ad::ForwardDiffAD, ::Type)
+function _only_gradient_impl(f, x, ad::AutoForwardDiff, ::Type)
     return ForwardDiff.gradient(f, x)
 end
 
 
 
-# ToDo: Specialize `AutoDiffOperators.with_gradient!!(f, δx, x, ad::ForwardDiffAD)`
+# ToDo: Specialize `AutoDiffOperators.with_gradient!!(f, δx, x, ad::AutoForwardDiff)`
 
 
 struct _JacVecProdTag{F, T} end
@@ -91,19 +56,19 @@ function _dual_along(f::F, x::AbstractVector{T1}, z::AbstractVector{T2}) where {
     f(ForwardDiff.Dual{T_Dual}.(x, z))
 end
 
-function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ::ForwardDiffAD)
+function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ::AutoForwardDiff)
     dual_y = _dual_along(f, x, z)
     ForwardDiff.value.(dual_y), ForwardDiff.partials.(dual_y, 1)
 end
 
 
-function AutoDiffOperators.with_vjp_func(f, x::AbstractVector{<:Real}, ad::ForwardDiffAD)
+function AutoDiffOperators.with_vjp_func(f, x::AbstractVector{<:Real}, ad::AutoForwardDiff)
     f(x), AutoDiffOperators._FwdModeVJPFunc(f, x, ad)
 end
 
 
 # ToDo: Use AD parameters
-function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::ForwardDiffAD)
+function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::AutoForwardDiff)
     y = f(x)
     R = promote_type(eltype(x), eltype(y))
     n_y, n_x = length(y), length(x)
@@ -115,7 +80,7 @@ end
 
 # ToDo: Use AD parameters
 # ToDo: Use custom multi-threaded code instead of using `ForwardDiff.gradient!`?
-function with_gradient(f, x::AbstractVector{<:Real}, ad::ForwardDiffAD)
+function with_gradient(f, x::AbstractVector{<:Real}, ad::AutoForwardDiff)
     y = f(x)
     AutoDiffOperators._grad_sensitivity(y) # Check that y is a real number
     R = promote_type(eltype(x), typeof(y))

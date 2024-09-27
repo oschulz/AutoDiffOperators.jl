@@ -12,8 +12,6 @@ variant of this function.
 function with_gradient end
 export with_gradient
 
-with_gradient(f, x, ad::FwdRevADSelector) = with_gradient(f, x, reverse_ad_selector(ad))
-
 _grad_sensitivity(y::Number) = one(y)
 _grad_sensitivity(@nospecialize(::Complex)) = error("f(x) is a complex number, but with_gradient expects it to a real number")
 _grad_sensitivity(@nospecialize(::T)) where T = error("f(x) is of type $(nameof(T)), but with_gradient expects it to a real number")

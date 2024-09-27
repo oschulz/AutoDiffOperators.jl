@@ -5,49 +5,38 @@ module AutoDiffOperatorsEnzymeExt
 using Enzyme
 
 import AutoDiffOperators
-import AbstractDifferentiation
 import ADTypes
+using ADTypes: AutoEnzyme
+
+const _enzyme_v0_13 = isdefined(Enzyme, :ForwardWithPrimal)
 
 
-Base.Module(::AutoDiffOperators.ADModule{:Enzyme}) = Enzyme
-
-const EnzymeAD = Union{
-    ADTypes.AutoEnzyme,
-    AutoDiffOperators.ADModule{:Enzyme}
-}
+@inline AutoDiffOperators.ADSelector(::Val{:Enzyme}) = AutoEnzyme()
 
 
-# ToDo: Support structured arguments (since Enzyme itself is capable of it).
-AutoDiffOperators.supports_structargs(::EnzymeAD) = false
-
-# ToDo: Add custom selector for Enzyme that contains chunk size, etc.
-
-# No AbstractDifferentiation doesn't have a backend for Enzyme yet.
-
-function AutoDiffOperators.convert_ad(::Type{ADTypes.AbstractADType}, ::AutoDiffOperators.ADModule{:Enzyme})
-    ADTypes.AutoEnzyme()
-end
-
-function AutoDiffOperators.convert_ad(::Type{AutoDiffOperators.ADModule}, ad::ADTypes.AutoEnzyme)
-    AutoDiffOperators.ADModule{:Enzyme}()
-end
-
-
-function AutoDiffOperators.with_gradient(f, x::AbstractVector{<:Real}, ad::EnzymeAD)
+function AutoDiffOperators.with_gradient(f, x::AbstractVector{<:Real}, ad::AutoEnzyme)
     δx = similar(x, float(eltype(x)))
     AutoDiffOperators.with_gradient!!(f, δx, x, ad)
 end
 
-function AutoDiffOperators.with_gradient!!(f, δx::AbstractVector{<:Real}, x::AbstractVector{<:Real}, ::EnzymeAD)
+function AutoDiffOperators.with_gradient!!(f, δx::AbstractVector{<:Real}, x::AbstractVector{<:Real}, ::AutoEnzyme)
     fill!(δx, zero(eltype(x)))
-    _, y = autodiff(ReverseWithPrimal, f, Duplicated(x, δx))
+    _, y = autodiff(ReverseWithPrimal, f, Active, Duplicated(x, δx))
     y, δx
 end
 
 
-function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ::EnzymeAD)
-    f_x, J_z = autodiff(Forward, f, Duplicated, Duplicated(x, z))
-    return f_x, J_z
+@static if _enzyme_v0_13
+    function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ::AutoEnzyme)
+        J_z, f_x = autodiff(ForwardWithPrimal, f, Duplicated(x, z))
+        return f_x, J_z
+    end
+else
+    # Enzyme v0.12
+    function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ::AutoEnzyme)
+        f_x, J_z = autodiff(Forward, f, Duplicated, Duplicated(x, z))
+        return f_x, J_z
+    end
 end
 
 # ToDo: Broadcast specialization of `with_jvp` for multiple z-values using `Enzyme.BatchDuplicated`.
@@ -73,7 +62,7 @@ function (vjp::_Enzyme_VJP_WithTape)(z)
     deepcopy(vjp.δx)
 end
 
-function AutoDiffOperators.with_vjp_func(f, x::AbstractVector{<:Real}, ::EnzymeAD)
+function AutoDiffOperators.with_vjp_func(f, x::AbstractVector{<:Real}, ::AutoEnzyme)
     δx = similar(x, float(eltype(x)))
     fill!(δx, zero(eltype(δx)))
     forward, reverse = autodiff_thunk(ReverseSplitWithPrimal, Const{Core.Typeof(f)}, Duplicated, Duplicated{Core.Typeof(δx)})
@@ -112,7 +101,7 @@ function (vjp::_Enzyme_VJP_NoTape)(z)
     return δx
 end
 
-function AutoDiffOperators.with_vjp_func(f, x::AbstractVector{<:Real}, ::EnzymeAD)
+function AutoDiffOperators.with_vjp_func(f, x::AbstractVector{<:Real}, ::AutoEnzyme)
     y = f(x)
     mf! = _Mutating_Func{Core.Typeof(f)}(f)
     return y, _Enzyme_VJP_NoTape(mf!, x, y)
@@ -121,20 +110,26 @@ end
 
 # ToDo: Broadcast specialization of functions returned by `with_vjp_func` for multiple z-values.
 
-@static if VERSION >= v"1.9"
-    # Causes crashes on (at least) Julia v1.6:
-    function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::EnzymeAD)
-        y = f(x)
-        R = promote_type(eltype(x), eltype(y))
-        n_y, n_x = length(y), length(x)
-        J = similar(y, R, (n_y, n_x))
-        if 4 * n_y < n_x && n_y <= 8  # Heuristic
-            J[:,:] = Enzyme.jacobian(Enzyme.Reverse, f, x, Val(n_y)) # Enzyme.jacobian is not type-stable
-        else
-            J[:,:] = Enzyme.jacobian(Enzyme.Forward, f, x) # Enzyme.jacobian is not type-stable
+function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::AutoEnzyme)
+    y = f(x)
+    R = promote_type(eltype(x), eltype(y))
+    n_y, n_x = length(y), length(x)
+    # Enzyme.jacobian is not type-stable:
+    J = similar(y, R, (n_y, n_x))
+    if 4 * n_y < n_x && n_y <= 8  # Heuristic
+        @static if _enzyme_v0_13
+            J[:,:] = Enzyme.jacobian(Enzyme.Reverse, f, x, n_outs = Val(n_y))[1]
+        else # Enzyme v0.12
+            J[:,:] = Enzyme.jacobian(Enzyme.Reverse, f, x, Val(n_y))
         end
-        f(x), J
+    else
+        @static if _enzyme_v0_13
+            J[:,:] = Enzyme.jacobian(Enzyme.Forward, f, x)[1]
+        else # Enzyme v0.12
+            J[:,:] = Enzyme.jacobian(Enzyme.Forward, f, x)
+        end
     end
+    f(x), J
 end
 
 

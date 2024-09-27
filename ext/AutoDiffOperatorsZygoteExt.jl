@@ -5,67 +5,24 @@ module AutoDiffOperatorsZygoteExt
 using Zygote
 
 import AutoDiffOperators
-import AbstractDifferentiation
 import ADTypes
-
-using FunctionChains: fchain
-
-
-Base.Module(::AutoDiffOperators.ADModule{:Zygote}) = Zygote
-
-const AbstractDifferentiation_ZygoteBackend = AbstractDifferentiation.ReverseRuleConfigBackend{<:Zygote.ZygoteRuleConfig}
-
-const ZygoteAD = Union{
-    ADTypes.AutoZygote,
-    AbstractDifferentiation_ZygoteBackend,
-    AutoDiffOperators.ADModule{:Zygote}
-}
+using ADTypes: AutoZygote
 
 
-AutoDiffOperators.supports_structargs(::ZygoteAD) = true
+@inline AutoDiffOperators.ADSelector(::Val{:Zygote}) = AutoZygote()
 
-AutoDiffOperators.forward_ad_selector(::ADTypes.AutoZygote) = AbstractDifferentiation.ForwardDiffBackend()
-
-AutoDiffOperators.forward_ad_selector(::AbstractDifferentiation_ZygoteBackend) =
-    AbstractDifferentiation.ForwardDiffBackend()
-
-AutoDiffOperators.forward_ad_selector(::ZygoteAD) = AutoDiffOperators.ADModule{:ForwardDiff}()
+AutoDiffOperators.forward_ad_selector(::ADTypes.AutoZygote) = ADTypes.AutoForwardDiff()
 
 
-function AutoDiffOperators.convert_ad(::Type{ADTypes.AbstractADType}, ad::AbstractDifferentiation_ZygoteBackend)
-    ADTypes.AutoZygote()
-end
-
-function AutoDiffOperators.convert_ad(::Type{ADTypes.AbstractADType}, ::AutoDiffOperators.ADModule{:Zygote})
-    ADTypes.AutoZygote()
-end
-
-function AutoDiffOperators.convert_ad(::Type{AbstractDifferentiation.AbstractBackend}, ad::ADTypes.AutoZygote)
-    AbstractDifferentiation.ZygoteBackend()
-end
-
-function AutoDiffOperators.convert_ad(::Type{AbstractDifferentiation.AbstractBackend}, ::AutoDiffOperators.ADModule{:Zygote})
-    AbstractDifferentiation.ZygoteBackend()
-end
-
-function AutoDiffOperators.convert_ad(::Type{AutoDiffOperators.ADModule}, ad::AbstractDifferentiation_ZygoteBackend)
-    AutoDiffOperators.ADModule{:Zygote}()
-end
-
-function AutoDiffOperators.convert_ad(::Type{AutoDiffOperators.ADModule}, ad::ADTypes.AutoZygote)
-    AutoDiffOperators.ADModule{:Zygote}()
-end
-
-
-function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ad::ZygoteAD)
+function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ad::AutoZygote)
     fwd_ad = forward_ad_selector(ad)
-    @assert !(fwd_ad isa ZygoteAD)
+    @assert !(fwd_ad isa AutoZygote)
     AutoDiffOperators.with_jvp(f, x, z, fwd_ad)
 end
 
 
 
-function AutoDiffOperators.with_vjp_func(f, x, ::ZygoteAD)
+function AutoDiffOperators.with_vjp_func(f, x, ::AutoZygote)
     y = f(x)
     _, pullback = Zygote.pullback(f, x)
     _with_vjp_func_result(x, y, pullback)
@@ -90,7 +47,7 @@ function (f::_ZygoteRealVecVJP)(z::AbstractVector{<:Real})
 end
 
 
-function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::ZygoteAD)
+function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::AutoZygote)
     y = f(x)
     R = promote_type(eltype(x), eltype(y))
     n_y, n_x = length(y), length(x)
