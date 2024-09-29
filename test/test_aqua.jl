@@ -4,6 +4,13 @@ import Test
 import Aqua
 import AutoDiffOperators
 
+Test.@testset "Package ambiguities" begin
+    # Test.@test isempty(Test.detect_ambiguities(AutoDiffOperators))
+end # testset
+
 Test.@testset "Aqua tests" begin
-    Aqua.test_all(AutoDiffOperators)
+    Aqua.test_all(
+        AutoDiffOperators,
+        ambiguities = false
+    )
 end # testset

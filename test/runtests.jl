@@ -11,5 +11,4 @@ Test.@testset "Package AutoDiffOperators" begin
     include("test_enzyme.jl")
     include("test_linear_maps.jl")
     include("test_docs.jl")
-    isempty(Test.detect_ambiguities(AutoDiffOperators))
 end # testset
