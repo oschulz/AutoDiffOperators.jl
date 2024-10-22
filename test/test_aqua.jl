@@ -11,6 +11,8 @@ end # testset
 Test.@testset "Aqua tests" begin
     Aqua.test_all(
         AutoDiffOperators,
-        ambiguities = false
+        ambiguities = false,
+        # Piracy detection is triggered incorrectly by `Base.convert(::Type{ADSelector}, m)`:
+        piracies = false
     )
 end # testset

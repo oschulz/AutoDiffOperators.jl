@@ -29,6 +29,20 @@ AutoDiffOperators currently provides it's own implementations for following
 AD-selectors: `AutoForwardDiff()`, `AutoFiniteDifferences()`, `AutoZygote()`
 and `AutoEnzyme()`.
 
+`ADSelector` (specifically `ADTypes.AbstractADType` ) instances for these
+backends can be constructed directly from modules and modules names
+(using `AutoDiffOperators` default backend parameters):
+
+```julia
+import ForwardDiff
+ADSelector(ForwardDiff)
+ADSelector(:ForwardDiff)
+ADSelector(Val(:ForwardDiff))
+convert(ADSelector, ForwardDiff)
+convert(ADSelector, :ForwardDiff)
+convert(ADSelector, Val(:ForwardDiff))
+```
+
 Some operations that specifically require forward-mode or reverse-mode
 AD will only accept a subset of these backends though.
 
@@ -58,9 +72,14 @@ const ADSelector = Union{
 }
 export ADSelector
 
+@inline ADSelector(ad::ADSelector) = ad
+
 @inline ADSelector(m::Symbol) = ADSelector(Val(m))
 @inline ADSelector(m::Module) = ADSelector(Val(nameof(m)))
 
+@inline Base.convert(::Type{ADSelector}, ::Val{m}) where m = ADSelector(m)
+@inline Base.convert(::Type{ADSelector}, m::Symbol) = ADSelector(Val(m))
+@inline Base.convert(::Type{ADSelector}, m::Module) = ADSelector(Val(nameof(m)))
 
 
 """

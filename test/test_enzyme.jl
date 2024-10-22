@@ -18,9 +18,13 @@ include("testutils.jl")
     fwd_adsel = ad
     rev_adsel = ad
 
+    @test ADSelector(ad) === ad
     @test ADSelector(Val(nameof(ad_module))) isa ADT
     @test ADSelector(nameof(ad_module)) isa ADT
     @test ADSelector(ad_module) isa ADT
+    @test convert(ADSelector, Val(nameof(ad_module))) isa ADT
+    @test convert(ADSelector, nameof(ad_module)) isa ADT
+    @test convert(ADSelector, ad_module) isa ADT
     @test_deprecated ADModule(:Enzyme) isa ADT
     @test_deprecated ADModule(Enzyme) isa ADT
 
