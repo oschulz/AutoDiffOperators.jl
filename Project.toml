@@ -4,8 +4,6 @@ version = "0.2.1"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
-AffineMaps = "2c83c9a8-abf5-4329-a0d7-deffaf474661"
-FunctionChains = "8e6b2b91-af83-483e-ba35-d00930e4cf9b"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [weakdeps]
@@ -26,12 +24,10 @@ AutoDiffOperatorsZygoteExt = "Zygote"
 
 [compat]
 ADTypes = "0.2, 1"
-AffineMaps = "0.2, 0.3"
 DifferentiationInterface = "0.5, 0.6"
 Enzyme = "0.11, 0.12, 0.13"
 FiniteDifferences = "0.12"
 ForwardDiff = "0.10"
-FunctionChains = "0.1"
 LinearAlgebra = "1"
 LinearMaps = "3"
 Zygote = "0.6"

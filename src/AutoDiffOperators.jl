@@ -15,9 +15,6 @@ import ADTypes
 using ADTypes: AbstractADType
 using ADTypes: AutoForwardDiff, AutoFiniteDifferences, AutoZygote, AutoEnzyme
 
-using AffineMaps: Mul
-using FunctionChains: fchain
-
 include("util.jl")
 include("mulfunc_operator.jl")
 include("ad_selector.jl")
