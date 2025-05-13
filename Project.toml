@@ -1,6 +1,6 @@
 name = "AutoDiffOperators"
 uuid = "6e1301d5-4f4d-4fb5-9679-7191e22f0e0e"
-version = "0.2.3"
+version = "0.2.4"
 
 [deps]
 ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
