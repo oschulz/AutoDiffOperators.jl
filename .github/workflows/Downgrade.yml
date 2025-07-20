@@ -28,5 +28,8 @@ jobs:
       - name: Manually downgrade DifferentiationInterface
         run: julia --project=. -e 'using TOML; data = TOML.parsefile("Project.toml"); data["compat"]["DifferentiationInterface"] = "=0.5.0"; open("Project.toml", "w") do io TOML.print(io, data) end'
         shell: bash
+      - name: Manually downgrade ADTypes
+        run: julia --project=. -e 'using TOML; data = TOML.parsefile("Project.toml"); data["compat"]["ADTypes"] = "=1.2.1"; open("Project.toml", "w") do io TOML.print(io, data) end'
+        shell: bash
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
