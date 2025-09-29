@@ -8,7 +8,6 @@ In respect to gradients, different Julia algorithm packages require function and
 
 * [`valgrad_func(f, ad::ADSelector)`](@ref): returns `f_∇f` with `y, δx = f_∇f(x)`.
 * [`gradient_func(f, ad::ADSelector)`](@ref): returns `∇f` with `δx = ∇f(x)`.
-* [`gradient!_func(f, ad::ADSelector)`](@ref): returns `∇f!` with `δx === ∇f!(δx, x)`.
 
 to cover several popular options. AutoDiffOperators also provides the direct gradient functions
 

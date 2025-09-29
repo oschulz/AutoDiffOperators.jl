@@ -190,35 +190,3 @@ function _GradOnlyFunc(aux::P, ad::AD, ::Type{FT}) where {P,AD<:AbstractADType,F
 end
 
 (f::_GradOnlyFunc{Nothing})(x::AbstractVector{<:Number}) = only_gradient(f.f, x, f.ad)
-
-
-"""
-    gradient!_func(f, ad::ADSelector)
-
-Returns a function `∇f!` that fills a given vector `δx` with gradient of `f`
-at a given point `x`, so that `∇f!(δx, x)` is equivalent to
-[`only_gradient!(f, δx, x, ad)`](@ref).
-"""
-function gradient!_func end
-export gradient!_func
-
-gradient!_func(f::F, ad::ADSelector) where F = _gradient!_func_impl(f, valid_reverse_adtype(ad))
-_gradient!_func_impl(f::F, ad::AbstractADType) where F = _GradOnly!Func(nothing, ad, f)
-
-# ToDo: gradient!_func(f, ad::AbstractADType, dummy_x::AbstractVector{<:Number}) with DI prep
-
-struct _GradOnly!Func{P,AD<:AbstractADType,F} <: Function
-    aux::P
-    ad::AD
-    f::F
-end
-
-function _GradOnly!Func(aux::P, ad::AD, ::Type{FT}) where {P,AD<:AbstractADType,FT}
-    return _GradOnly!Func{P,AD,Type{FT}}(aux, ad, FT)
-end
-
-function (f!::_GradOnly!Func{Nothing})(δx::AbstractVector{<:Number}, x::AbstractVector{<:Number})
-    float_x = with_floatlike_contents(x)
-    only_gradient!(f!.f, δx, float_x, f!.ad)
-    return δx
-end

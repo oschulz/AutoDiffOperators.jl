@@ -123,14 +123,5 @@ function test_adsel_functionality(ad::ADSelector)
         @test @inferred(∇f(x)) isa AbstractVector{<:Number}
         grad_g_x = ∇f(x)
         @test grad_g_x ≈ grad_g_x_ref
-
-        @test @inferred(gradient!_func(g, ad)) isa Function
-        ∇f! = gradient!_func(g, ad)
-        let δx = zero(x)
-            @test @inferred(∇f!(δx, x)) isa AbstractVector{<:Number}
-            grad_g_x = ∇f!(δx, x)
-            @test grad_g_x === δx
-            @test grad_g_x ≈ grad_g_x_ref
-        end
     end
 end
