@@ -29,3 +29,26 @@ function similar_onehot(A::AbstractArray{<:Number}, ::Type{T}, n::Integer, i::In
     result[i] = one(T)
     return result
 end
+
+
+# _similar_type(::T) where T = Core.Compiler.return_type(similar, Tuple{T})
+_similar_type(::Type{T}) where T = Core.Compiler.return_type(similar, Tuple{T})
+
+_oftype(::T, x::T) where T = x
+_oftype(::T, x::U) where {T,U} = convert(T, x)::T
+
+_oftype(::T, x::T) where {T<:AbstractArray} = x
+function _oftype(::T, x::U) where {T<:AbstractArray,U<:AbstractArray}
+    R = _similar_type(T)
+    return convert(R, x)::R
+end
+
+_oftype!!(::T, x::T) where T = x
+_oftype!!(y::T, x::U) where {T,U} = oftype(y, x)
+
+_oftype!!(::T, x::T) where {T<:AbstractArray} = x
+_oftype!!(y::T, x::U) where {T<:AbstractArray,U<:AbstractArray} = _oftype_array_impl!!(Val(isbitstype(T)), y, x)
+# Assume T is immutable:
+_oftype_array_impl!!(::Val{true}, y::T, x::U) where {T<:AbstractArray,U<:AbstractArray} = oftype(y, x)
+# Assume T is mutable:
+_oftype_array_impl!!(::Val{false}, y::T, x::U) where {T<:AbstractArray,U<:AbstractArray} = copyto!(y, x)::T

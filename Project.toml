@@ -12,6 +12,7 @@ Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 LinearMaps = "7a12625a-238d-50fd-b39a-03d52299707e"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [extensions]
@@ -20,6 +21,7 @@ AutoDiffOperatorsEnzymeExt = "Enzyme"
 AutoDiffOperatorsFiniteDifferencesExt = "FiniteDifferences"
 AutoDiffOperatorsForwardDiffExt = "ForwardDiff"
 AutoDiffOperatorsLinearMapsExt = "LinearMaps"
+AutoDiffOperatorsStaticArraysExt = "StaticArrays"
 AutoDiffOperatorsZygoteExt = "Zygote"
 
 [compat]
@@ -30,5 +32,6 @@ FiniteDifferences = "0.12"
 ForwardDiff = "0.10, 1"
 LinearAlgebra = "1"
 LinearMaps = "3"
+StaticArrays = "1"
 Zygote = "0.6, 0.7"
 julia = "1.10"

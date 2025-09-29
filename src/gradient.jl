@@ -38,9 +38,9 @@ efficient implementations.
 function with_gradient!! end
 export with_gradient!!
 
-# ToDo: Copy result of with_gradient to δx if mutable, convert to same type if immutable:
 function with_gradient!!(f, @nospecialize(δx::AbstractVector{<:Number}), x::AbstractVector{<:Number}, ad::ADSelector)
-    return with_gradient(f, x, ad::ADSelector)
+    y, grad_x = with_gradient(f, x, ad::ADSelector)
+    return y, _oftype!!(δx, grad_x)
 end
 
 
