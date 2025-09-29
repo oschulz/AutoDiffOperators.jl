@@ -12,18 +12,16 @@ include("testutils.jl")
 
 @testset "test ForwardDiff" begin
     structargs = false
-    ad_backend = ADSelector(ForwardDiff, FiniteDifferences)
-    @test ADSelector(fwd = ForwardDiff, rev = FiniteDifferences) == ad_backend
+    ad = ADSelector(ForwardDiff, FiniteDifferences)
+    @test ADSelector(fwd = ForwardDiff, rev = FiniteDifferences) == ad
 
     fwd_adsel = ADSelector(ForwardDiff)
     rev_adsel = ADSelector(FiniteDifferences)
 
-    for ad in [ad_backend]
-        @testset "fwd and rev sel for $ad" begin
-            @test @inferred(forward_ad_selector(ad)) == fwd_adsel
-            @test @inferred(reverse_ad_selector(ad)) == rev_adsel
-        end
-
-        test_adsel_functionality(ad)
+    @testset "fwd and rev sel for $ad" begin
+        @test @inferred(forward_adtype(ad)) == fwd_adsel
+        @test @inferred(reverse_adtype(ad)) == rev_adsel
     end
+
+    test_adsel_functionality(ad)
 end

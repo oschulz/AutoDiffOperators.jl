@@ -27,8 +27,8 @@ include("testutils.jl")
     @test ADSelector(ad_module) isa ADT
 
     @testset "fwd and rev sel for $ad" begin
-        @test @inferred(forward_ad_selector(ad)) == fwd_adsel
-        @test @inferred(reverse_ad_selector(ad)) == rev_adsel
+        @test @inferred(forward_adtype(ad)) == fwd_adsel
+        @test @inferred(reverse_adtype(ad)) == rev_adsel
     end
 
     test_adsel_functionality(ad)

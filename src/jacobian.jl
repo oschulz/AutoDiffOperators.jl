@@ -4,7 +4,7 @@
 """
     with_jacobian(f, x::AbstractVector{<:Number}, OP, ad::ADSelector)
 
-Returns a tuple `(f(x), J)` with a multiplicative Jabobian operator `J`
+Returns a tuple `(f(x), J)` with a multiplicative Jacobian operator `J`
 of type `OP`.
 
 Example:
@@ -13,7 +13,7 @@ Example:
 using AutoDiffOperators, LinearMaps
 y, J = with_jacobian(f, x, LinearMap, ad)
 y == f(x)
-_, J_explicit = with_jacobian(f, x, Matrix, ad)
+_, J_explicit = with_jacobian(f, x, DenseMatrix, ad)
 J * z_r ≈ J_explicit * z_r
 z_l' * J ≈ z_l' * J_explicit
 ```
@@ -22,40 +22,59 @@ z_l' * J ≈ z_l' * J_explicit
 [`LinearMaps.LinearMap`](https://github.com/JuliaLinearAlgebra/LinearMaps.jl)
 (resp. `LinearMaps.FunctionMap`) or `Matrix`. Other operator types can be
 supported by specializing
-[`AutoDiffOperators.mulfunc_operator`](@ref) for the operator type.
+[`mulfunc_operator`](@ref) for the operator type.
 
 The default implementation of `with_jacobian` uses
 [`jvp_func`](@ref) and [`with_vjp_func`](@ref) to implement (adjoint)
 multiplication of `J` with (adjoint) vectors.
 """
 function with_jacobian end
-
-function with_jacobian(f, x::AbstractVector{T}, ::Type{OP}, ad::ADSelector) where {T<:Real,OP}
-    y, vjp = with_vjp_func(f, x, ad)
-    jvp = jvp_func(f, x, ad)
-    sz = Dims((size(y,1), size(x,1)))
-    J = mulfunc_operator(OP, T, sz, jvp, vjp, Val(false), Val(false), Val(false))
-    return y, J
-end
 export with_jacobian
 
 
-struct _JVPFunc{F,V,AD<:ADSelector} <: Function
-    f::F
-    x::V
-    ad::AD
+function with_jacobian(f::F, x::AbstractVector{T}, ::Type{OP}, ad::ADSelector) where {F,T<:Real,OP}
+    ad_fwd = forward_adtype(ad)
+    ad_rev = reverse_adtype(ad)
+    f_jvp = _maybe_jvp_func(ad_fwd, f, x, ad)
+    y, f_vjp = _maybe_with_vjp_func(ad_rev, f, x, ad)
+    sz = Dims((size(y,1), size(x,1)))
+    J = mulfunc_operator(OP, T, sz, f_jvp, f_vjp, Val(false), Val(false), Val(false))
+    return y, J
 end
-_JVPFunc(::Type{FT}, x::V, ad::AD) where {FT,V<:AbstractVector{<:Number},AD<:ADSelector}  = _JVPFunc{Type{FT},V,AD}(FT, x, ad)
 
-(jvp_func::_JVPFunc)(z::AbstractVector{<:Number}) = with_jvp(jvp_func.f, jvp_func.x, z, jvp_func.ad)[2]
+_maybe_jvp_func(ad_fwd::AbstractADType, f::F, x, ::ADSelector) where F = jvp_func(f, x, ad_fwd)
+_maybe_jvp_func(::NoAutoDiff, f, x, ::Type{AD}) where {AD<:ADSelector} = _NoJVPFunc{AD}()
 
-"""
-    jvp_func(f, x::AbstractVector{<:Number}, ad::ADSelector)
+struct _NoJVPFunc{AD<:ADSelector} <: Function end
+function (::_NoJVPFunc{AD})(::AbstractVector{<:Number}) where AD
+    throw(ErrorException("No forward-mode automatic differentiation available for AD-selector $(nameof(AD)), can't compute Jacobian * vector products"))
+end
 
-Returns a function `jvp` with `jvp(z) == J * z`.
-"""
-jvp_func(f, x::AbstractVector{<:Number}, ad::ADSelector) = _JVPFunc(f, x, forward_ad_selector(ad))
-export jvp_func
+_maybe_with_vjp_func(ad_rev::AbstractADType, f::F, x, ::ADSelector) where F = with_vjp_func(f, x, ad_rev)
+_maybe_with_vjp_func(::NoAutoDiff, f, x, ::Type{AD}) where {AD<:ADSelector} = f(x), _NoVJPFunc{AD}()
+
+struct _NoVJPFunc{AD<:ADSelector} <: Function end
+function (::_NoVJPFunc{AD})(::AbstractVector{<:Number}) where AD
+    throw(ErrorException("No reverse-mode automatic differentiation available for AD-selector $(nameof(AD)), can't compute vector * Jacobian product"))
+end
+
+
+function with_jacobian(f::F, x::AbstractVector{<:Real}, ::Type{<:DenseMatrix}, ad::ADSelector) where F
+    return _with_jacobian_matrix(f, x, ad)
+end
+
+function _with_jacobian_matrix(f::F, x::AbstractVector{<:Real}, ad::ADSelector) where F
+    ad_fwd = valid_forward_adtype(ad)
+    return _with_jacobian_matrix_impl(f, x, ad_fwd)
+end
+
+function _with_jacobian_matrix_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType) where F
+    float_x = with_floatlike_contents(x)
+    T_f_x = _primal_return_type(f, float_x)
+    T_J = _matrix_type(T_f_x, typeof(float_x))
+    f_x, J = DI.value_and_jacobian(f, ad, float_x)
+    return convert(T_f_x, f_x)::T_f_x, convert(T_J, J)::T_J
+end
 
 
 """
@@ -66,8 +85,69 @@ Returns a tuple `(f(x), J * z)`.
 function with_jvp end
 export with_jvp
 
+function with_jvp(f::F, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ad::ADSelector) where F
+    ad_fwd = valid_forward_adtype(ad)
+    return _with_jvp_impl(f, x, z, ad_fwd)
+end
+
+function _with_jvp_impl(f::F, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ad::AbstractADType) where F
+    float_x = with_floatlike_contents(x)
+    float_z = with_floatlike_contents(z)
+    T_z = typeof(float_z)
+    T_f_x = _primal_return_type(f, float_x)
+    T_J_z = _similar_type(T_z, T_f_x)
+    f_x, J_zs = DI.value_and_pushforward(f, ad, float_x, (float_z,))
+    return convert(T_f_x, f_x)::T_f_x, convert(T_J_z, only(J_zs))::T_J_z
+end
+
 
 # ToDo: add `with_jvp!(f, Jz, x, z, ad::ADSelector)`?
+
+
+"""
+    jvp_func(f, x::AbstractVector{<:Number}, ad::ADSelector)
+
+Returns a function `jvp` with `jvp(z) == J * z`.
+"""
+function jvp_func end
+export jvp_func
+
+function jvp_func(f::F, x::AbstractVector{<:Real}, ad::ADSelector) where F
+    ad_fwd = valid_forward_adtype(ad)
+    return _jvp_func_impl(f, x, ad_fwd)
+end
+
+function _jvp_func_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType) where F
+    float_x = with_floatlike_contents(x)
+    prep = DI.prepare_pushforward_same_point(f, ad, float_x, (float_x,))
+    f_jvp = _JVPFunc((;prep = prep), ad, f, float_x)
+    return f_jvp
+end
+
+struct _JVPFunc{P,AD<:AbstractADType,F,T<:AbstractVector{<:Number}} <: Function
+    aux::P
+    ad::AD
+    f::F
+    x::T
+end
+
+function _JVPFunc(aux::P, ad::AD, ::Type{FT}, x::T) where {P,AD<:AbstractADType,FT,T<:AbstractVector{<:Number}}
+    return _JVPFunc{P,AD,Type{FT},T}(aux, ad, FT, x)
+end
+
+(f_jvp::_JVPFunc{Nothing})(z::AbstractVector{<:Number}) = with_jvp(f_jvp.f, f_jvp.x, z, f_jvp.ad)[2]
+
+function (f_jvp::_JVPFunc{<:NamedTuple{(:prep,)}})(z::AbstractVector{<:Real})
+    prep = f_jvp.aux.prep
+    f = f_jvp.f
+    float_x = f_jvp.x
+    float_z = with_floatlike_contents(z)
+    T_z = typeof(float_z)
+    T_f_x = _primal_return_type(f, float_x)
+    T_J_z = _similar_type(T_z, T_f_x)
+    J_z = only(DI.pushforward(f, prep, f_jvp.ad, float_x, (float_z,)))
+    return convert(T_J_z, J_z)::T_J_z
+end
 
 
 """
@@ -78,25 +158,38 @@ Returns a tuple `(f(x), vjp)` with the function `vjp(z) ≈ J' * z`.
 function with_vjp_func end
 export with_vjp_func
 
+function with_vjp_func(f::F, x::AbstractVector{<:Real}, ad::ADSelector) where F
+    ad_rev = reverse_adtype(ad)
+    return _with_vjp_func_impl(f, x, ad_rev)
+end
 
+function _with_vjp_func_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType) where F
+    float_x = with_floatlike_contents(x)
+    f_x = f(float_x)
+    prep = DI.prepare_pullback_same_point(f, ad, float_x, (f_x,))
+    f_vjp = _VJPFunc((;prep = prep), ad, f, float_x)
+    return f_x, f_vjp
+end
 
-struct _FwdModeVJPFunc{F,T<:AbstractVector{<:Real},AD<:ADSelector} <: Function
+struct _VJPFunc{P,AD<:AbstractADType,F,T<:AbstractVector{<:Number}} <: Function
+    aux::P
+    ad::AD
     f::F
     x::T
-    ad::AD
 end
-_FwdModeVJPFunc(::Type{FT}, x::T, ad::AD) where {FT,T<:AbstractVector{<:Real},AD<:ADSelector}  = _FwdModeVJPFunc{Type{FT},T,AD}(FT, x, ad)
 
+function _VJPFunc(aux::P, ad::AD, ::Type{FT}, x::T) where {P,AD<:AbstractADType,FT,T<:AbstractVector{<:Number}}
+    return _VJPFunc{P,AD,Type{FT},T}(aux, ad, FT, x)
+end
 
-function (vjp::_FwdModeVJPFunc)(z::AbstractVector{<:Real})
-    # ToDo: Reduce memory allocation? Would require a `with_jvp!` function.
-    f, x, ad = vjp.f, vjp.x, vjp.ad
-    U = promote_type(eltype(f(x)), eltype(x))
-    n = size(x, 1)
-    result = similar(x, U)
-    Base.Threads.@threads for i in eachindex(x)
-        tmp = similar_onehot(x, U, n, i)
-        result[i] = dot(z, with_jvp(f, x, tmp, ad)[2])
-    end
-    result
+function (f_vjp::_VJPFunc{<:NamedTuple{(:prep,)}})(z::AbstractVector{<:Real})
+    prep = f_vjp.aux.prep
+    f = f_vjp.f
+    float_x = f_vjp.x
+    float_z = with_floatlike_contents(z)
+    T_x = typeof(float_x)
+    T_z = typeof(float_z)
+    T_z_J = _similar_type(T_z, T_x)
+    z_J = DI.pullback(f, prep, f_vjp.ad, float_x, (float_z,))[1]
+    return convert(T_z_J, z_J)::T_z_J
 end

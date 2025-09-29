@@ -21,4 +21,4 @@ function AutoDiffOperators.mulfunc_operator(
 end
 
 
-end # module LinearMaps
+end # module AutoDiffOperatorsLinearMapsExt

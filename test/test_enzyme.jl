@@ -15,8 +15,16 @@ include("testutils.jl")
     ad_module = Enzyme
     structargs = false
     ad = ADSelector(ad_module)
-    fwd_adsel = ad
-    rev_adsel = ad
+    fwd_adsel = AutoEnzyme(function_annotation = Enzyme.Const, mode = Enzyme.ForwardWithPrimal)
+    rev_adsel = AutoEnzyme(function_annotation = Enzyme.Const, mode = Enzyme.ReverseWithPrimal)
+
+    @test ad.mode isa Nothing
+    @test @inferred(forward_adtype(ad)).mode isa Enzyme.ForwardMode{true}
+    @test @inferred(forward_adtype(forward_adtype(ad))).mode isa Enzyme.ForwardMode
+    @test_throws ArgumentError forward_adtype(reverse_adtype(ad))
+    @test @inferred(reverse_adtype(ad)).mode isa Enzyme.ReverseMode{true}
+    @test @inferred(reverse_adtype(reverse_adtype(ad))).mode isa Enzyme.ReverseMode
+    @test_throws ArgumentError reverse_adtype(forward_adtype(ad))
 
     @test ADSelector(ad) === ad
     @test ADSelector(Val(nameof(ad_module))) isa ADT
@@ -27,8 +35,8 @@ include("testutils.jl")
     @test convert(ADSelector, ad_module) isa ADT
 
     @testset "fwd and rev sel for $ad" begin
-        @test @inferred(forward_ad_selector(ad)) == fwd_adsel
-        @test @inferred(reverse_ad_selector(ad)) == rev_adsel
+        @test @inferred(forward_adtype(ad)) == fwd_adsel
+        @test @inferred(reverse_adtype(ad)) == rev_adsel
     end
 
     test_adsel_functionality(ad)

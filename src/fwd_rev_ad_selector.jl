@@ -22,10 +22,5 @@ ADSelector(::Nothing, rev) = rev
 
 ADSelector(;fwd, rev) = ADSelector(fwd, rev)
 
-forward_ad_selector(ad::FwdRevADSelector) = ad.fwd
-reverse_ad_selector(ad::FwdRevADSelector) = ad.rev
-
-with_gradient(f, x::AbstractVector{<:Number}, ad::FwdRevADSelector) = with_gradient(f, x, reverse_ad_selector(ad))
-
-with_jvp(f, x::AbstractVector{<:Number}, z::AbstractVector{<:Number}, ad::FwdRevADSelector) = with_jvp(f, x, z, forward_ad_selector(ad))
-with_vjp_func(f, x::AbstractVector{<:Number}, ad::FwdRevADSelector) = with_vjp_func(f, x, reverse_ad_selector(ad))
+forward_adtype(ad::FwdRevADSelector) = forward_adtype(ad.fwd)
+reverse_adtype(ad::FwdRevADSelector) = reverse_adtype(ad.rev)

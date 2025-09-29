@@ -5,77 +5,113 @@ module AutoDiffOperatorsEnzymeExt
 using Enzyme
 
 import AutoDiffOperators
+using AutoDiffOperators: with_floatlike_contents
+using AutoDiffOperators: _primal_return_type, _similar_type, _matrix_type, _JVPFunc, _VJPFunc
+
 import ADTypes
 using ADTypes: AutoEnzyme
 
-const _enzyme_v0_13 = isdefined(Enzyme, :ForwardWithPrimal)
 
-
-@inline AutoDiffOperators.ADSelector(::Val{:Enzyme}) = AutoEnzyme()
-
-
-function AutoDiffOperators.with_gradient(f, x::AbstractVector{<:Real}, ad::AutoEnzyme)
-    δx = similar(x, float(eltype(x)))
-    AutoDiffOperators.with_gradient!!(f, δx, x, ad)
+function AutoDiffOperators._adsel_enzyme_forward(ad::AutoEnzyme{M, A}) where {M, A}
+    mode = _enzyme_forward_withprimal(ad.mode)
+    return AutoEnzyme(function_annotation = Enzyme.Const, mode = mode)
 end
 
-function AutoDiffOperators.with_gradient!!(f, δx::AbstractVector{<:Real}, x::AbstractVector{<:Real}, ::AutoEnzyme)
-    fill!(δx, zero(eltype(x)))
-    _, y = autodiff(ReverseWithPrimal, f, Active, Duplicated(x, δx))
-    y, δx
+_enzyme_forward_withprimal(mode::Enzyme.ForwardMode{true}) = mode
+_enzyme_forward_withprimal(::Nothing) = Enzyme.ForwardWithPrimal
+_enzyme_forward_withprimal(mode) = throw(ArgumentError("Enzyme mode $mode is not a forward mode with primal"))
+
+_enzyme_forward_mode(mode::Enzyme.ForwardMode) = mode
+_enzyme_forward_mode(::Nothing) = Enzyme.Forward
+_enzyme_forward_mode(mode) = throw(ArgumentError("Enzyme mode $mode is not a forward mode"))
+
+
+function AutoDiffOperators._adsel_enzyme_reverse(ad::AutoEnzyme{M, A}) where {M, A}
+    mode = _enzyme_reverse_withprimal(ad.mode)
+    return AutoEnzyme(function_annotation = Enzyme.Const, mode = mode)
 end
 
+_enzyme_reverse_withprimal(mode::Enzyme.ReverseMode{true}) = mode
+_enzyme_reverse_withprimal(::Nothing) = Enzyme.ReverseWithPrimal
+_enzyme_reverse_withprimal(mode) = throw(ArgumentError("Enzyme mode $mode is not a reverse mode with primal"))
 
-@static if _enzyme_v0_13
-    function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ::AutoEnzyme)
-        J_z, f_x = autodiff(ForwardWithPrimal, f, Duplicated(x, z))
-        return f_x, J_z
-    end
-else
-    # Enzyme v0.12
-    function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ::AutoEnzyme)
-        f_x, J_z = autodiff(Forward, f, Duplicated, Duplicated(x, z))
-        return f_x, J_z
-    end
-end
-
-# ToDo: Broadcast specialization of `with_jvp` for multiple z-values using `Enzyme.BatchDuplicated`.
+_enzyme_reverse_mode(mode::Enzyme.ReverseMode) = mode
+_enzyme_reverse_mode(::Nothing) = Enzyme.Reverse
+_enzyme_reverse_mode(mode) = throw(ArgumentError("Enzyme mode $mode is not a reverse mode"))
 
 
+# Works, but DifferentiationInterface implementations are more sophisticated.
+# Keep this around for now in case custom Enzyme use is required in the
+# Future, e.g. for Reactant:
 #=
 
-# How do to this in a thread-safe fashion?
-
-struct _Enzyme_VJP_WithTape{REV,CF<:Const,TP,TX<:AbstractVector{<:Real},DX<:AbstractVector{<:Real},DY<:AbstractVector{<:Real}} <: Function
-    reverse::REV
-    cf::CF
-    tape::TP
-    x::TX
-    δx::DX
-    δy::DY
+function AutoDiffOperators._with_jacobian_matrix_impl(f, x::AbstractVector{<:Real}, ad::AutoEnzyme)
+    mode = _enzyme_forward_mode(ad.mode)
+    return _with_jacobian_matrix_enzyme(mode, f, x)
 end
 
-function (vjp::_Enzyme_VJP_WithTape)(z)
-    fill!(vjp.δx, zero(eltype(vjp.δx)))
-    vjp.δy .= z
-    vjp.reverse(vjp.cf, Duplicated(vjp.x, vjp.δx), vjp.tape)
-    deepcopy(vjp.δx)
+function _with_jacobian_matrix_enzyme(mode::Enzyme.ForwardMode, f, x::AbstractVector{<:Real})
+    float_x = with_floatlike_contents(x)
+    y = f(float_x)
+    R = _matrix_type(typeof(y), typeof(float_x))
+    result = Enzyme.jacobian(mode, f, float_x)
+    J = convert(R, _get_jac_matrix(result))::R
+    y, J
 end
 
-function AutoDiffOperators.with_vjp_func(f, x::AbstractVector{<:Real}, ::AutoEnzyme)
-    δx = similar(x, float(eltype(x)))
+function _with_jacobian_matrix_enzyme(mode::Enzyme.ReverseMode, f, x::AbstractVector{<:Real})
+    float_x = with_floatlike_contents(x)
+    y = f(float_x)
+    R = _matrix_type(typeof(y), typeof(float_x))
+    n_y = length(y)  # number of outputs required by Enzyme in reverse mode
+    result = Enzyme.jacobian(mode, f, float_x, n_outs = Val(n_y))
+    J = convert(R, _get_jac_matrix(result.derivs))::R
+    y, J
+end
+
+_get_jac_matrix(result::NamedTuple) = _get_jac_matrix(result.derivs)
+_get_jac_matrix(result::Tuple{AbstractMatrix{<:Real}}) = result[1]
+
+
+function AutoDiffOperators._with_jvp_impl(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ad::AutoEnzyme)
+    mode = _enzyme_forward_withprimal(ad.mode)
+    float_x = with_floatlike_contents(x)
+    float_z = with_floatlike_contents(z)
+    T_z = typeof(float_z)
+    T_f_x = _primal_return_type(f, float_x)
+    T_J_z = _similar_type(T_z, T_f_x)
+    J_z, f_x = autodiff(mode, f, Duplicated(float_x, float_z))
+    return convert(T_f_x, f_x)::T_f_x, convert(T_J_z, J_z)::T_J_z
+end
+
+AutoDiffOperators._jvp_func_impl(f::F, x::AbstractVector{<:Real}, ad::AutoEnzyme) where F = _JVPFunc(nothing, ad, f, x)
+
+
+function AutoDiffOperators._with_vjp_func_impl(f::F, x::AbstractVector{<:Real}, ad::AutoEnzyme) where F
+    float_x = with_floatlike_contents(x)
+    y = f(float_x)
+    mf! = _Mutating_Func(f)
+    return y, _VJPFunc((;y = y), ad, mf!, float_x)
+end
+
+function (f_vjp::_VJPFunc{<:NamedTuple{(:y,)},<:AutoEnzyme})(z)
+    mf! = f_vjp.f
+    δx = similar(f_vjp.x, float(eltype(f_vjp.x)))
     fill!(δx, zero(eltype(δx)))
-    forward, reverse = autodiff_thunk(ReverseSplitWithPrimal, Const{Core.Typeof(f)}, Duplicated, Duplicated{Core.Typeof(δx)})
-    tape, y, δy  = forward(Const(f), Duplicated(x, δx))
-    return y, _Enzyme_VJP_WithTape(reverse, Const(f), tape, x, δx, δy)
+    y = similar(f_vjp.aux.y)
+    δy = deepcopy(z)
+    mode = f_vjp.ad.mode
+
+    Enzyme.autodiff(mode, Const(mf!), Duplicated(y, δy), Duplicated(f_vjp.x, δx))
+
+    return δx
 end
-
-=#
-
 
 struct _Mutating_Func{F} <: Function
     f::F
 end
+
+_Mutating_Func(::Type{FT}) where FT = _Mutating_Func{Type{FT}}(FT)
 
 function (mf!::_Mutating_Func)(y, x)
     y .= mf!.f(x)
@@ -83,54 +119,36 @@ function (mf!::_Mutating_Func)(y, x)
 end
 
 
-struct _Enzyme_VJP_NoTape{MF<:_Mutating_Func,T,U} <: Function
-    mf!::MF
-    x::T
-    y::U
+# ToDo: StaticArray support
+function AutoDiffOperators._with_gradient_impl(f, x::AbstractVector{<:Real}, ad::AutoEnzyme)
+    δx = similar(x, float(eltype(x)))
+    return AutoDiffOperators._with_gradient_impl!(f, δx, x, ad)
 end
 
-function (vjp::_Enzyme_VJP_NoTape)(z)
-    δx = similar(vjp.x, float(eltype(vjp.x)))
+# ToDo: StaticArray support
+function AutoDiffOperators._with_gradient_impl!(f, δx::AbstractVector{<:Real}, x::AbstractVector{<:Real}, ad::AutoEnzyme)
+    mode = _enzyme_reverse_withprimal(ad.mode)
+    float_x = with_floatlike_contents(x)
     fill!(δx, zero(eltype(δx)))
+    _, y = autodiff(mode, f, Active, Duplicated(float_x, δx))
+    return y, δx
+end
 
-    y = similar(vjp.y)
-    δy = deepcopy(z)
+# ToDo: StaticArray support
+function AutoDiffOperators._only_gradient_impl(f, x::AbstractVector{<:Real}, ad::AutoEnzyme)
+    δx = similar(x, float(eltype(x)))
+    return AutoDiffOperators._only_gradient_impl!(f, δx, x, ad)
+end
 
-    Enzyme.autodiff(Reverse, Const(vjp.mf!), Duplicated(y, δy), Duplicated(vjp.x, δx))
-
+# ToDo: StaticArray support
+function AutoDiffOperators._only_gradient_impl!(f, δx::AbstractVector{<:Real}, x::AbstractVector{<:Real}, ad::AutoEnzyme)
+    mode = _enzyme_reverse_mode(ad.mode)
+    float_x = with_floatlike_contents(x)
+    fill!(δx, zero(eltype(δx)))
+    autodiff(mode, f, Active, Duplicated(float_x, δx))
     return δx
 end
 
-function AutoDiffOperators.with_vjp_func(f, x::AbstractVector{<:Real}, ::AutoEnzyme)
-    y = f(x)
-    mf! = _Mutating_Func{Core.Typeof(f)}(f)
-    return y, _Enzyme_VJP_NoTape(mf!, x, y)
-end
+=#
 
-
-# ToDo: Broadcast specialization of functions returned by `with_vjp_func` for multiple z-values.
-
-function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::AutoEnzyme)
-    y = f(x)
-    R = promote_type(eltype(x), eltype(y))
-    n_y, n_x = length(y), length(x)
-    # Enzyme.jacobian is not type-stable:
-    J = similar(y, R, (n_y, n_x))
-    if 4 * n_y < n_x && n_y <= 8  # Heuristic
-        @static if _enzyme_v0_13
-            J[:,:] = Enzyme.jacobian(Enzyme.Reverse, f, x, n_outs = Val(n_y))[1]
-        else # Enzyme v0.12
-            J[:,:] = Enzyme.jacobian(Enzyme.Reverse, f, x, Val(n_y))
-        end
-    else
-        @static if _enzyme_v0_13
-            J[:,:] = Enzyme.jacobian(Enzyme.Forward, f, x)[1]
-        else # Enzyme v0.12
-            J[:,:] = Enzyme.jacobian(Enzyme.Forward, f, x)
-        end
-    end
-    f(x), J
-end
-
-
-end # module Enzyme
+end # module AutoDiffOperatorsEnzymeExt

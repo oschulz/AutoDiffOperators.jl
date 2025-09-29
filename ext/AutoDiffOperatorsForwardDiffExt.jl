@@ -4,48 +4,16 @@ module AutoDiffOperatorsForwardDiffExt
 
 using ForwardDiff
 
-import AutoDiffOperators
+using AutoDiffOperators: AutoDiffOperators, similar_onehot, with_jvp
+
 import ADTypes
-using ADTypes: AutoForwardDiff
+using ADTypes: AbstractADType, AutoForwardDiff
+
+using LinearAlgebra
 
 
-@inline AutoDiffOperators.ADSelector(::Val{:ForwardDiff}) = AutoForwardDiff()
-
-
-# ToDo: Use AD parameters
-function AutoDiffOperators.with_gradient(f, x::AbstractVector{<:Real}, ad::AutoForwardDiff)
-    T = typeof(x)
-    U = Core.Compiler.return_type(f, Tuple{typeof(x)})
-    y = f(x)
-    R = promote_type(eltype(x), eltype(y))
-    n_y, n_x = length(y), length(x)
-    dy = similar(x, R)
-    dy .= ForwardDiff.gradient(f, x)
-    return y, dy
-end
-
-
-function AutoDiffOperators.only_gradient(f, x::AbstractVector{<:Real}, ad::AutoForwardDiff)
-    T = eltype(x)
-    U = Core.Compiler.return_type(f, Tuple{typeof(x)})
-    R = promote_type(T, U)
-    _only_gradient_impl(f, x, ad, R)
-end
-
-function _only_gradient_impl(f, x, ad::AutoForwardDiff, ::Type{R}) where {R <: Real}
-    dy = similar(x, R)
-    dy .= ForwardDiff.gradient(f, x)
-    return dy
-end
-
-function _only_gradient_impl(f, x, ad::AutoForwardDiff, ::Type)
-    return ForwardDiff.gradient(f, x)
-end
-
-
-
-# ToDo: Specialize `AutoDiffOperators.with_gradient!!(f, δx, x::AbstractVector{<:function AutoDiffOperators.only_gradient(f, x::AbstractVector{<:Real}, ad::AutoForwardDiff)
-
+# DifferentiationInterface implementations seem more performant than these:
+#=
 
 struct _JacVecProdTag{F, T} end
 
@@ -56,46 +24,46 @@ function _dual_along(f::F, x::AbstractVector{T1}, z::AbstractVector{T2}) where {
     f(ForwardDiff.Dual{T_Dual}.(x, z))
 end
 
-function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ::AutoForwardDiff)
+
+function AutoDiffOperators._with_jvp_impl(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ::AutoForwardDiff)
     dual_y = _dual_along(f, x, z)
     ForwardDiff.value.(dual_y), ForwardDiff.partials.(dual_y, 1)
 end
 
 
-function AutoDiffOperators.with_vjp_func(f, x::AbstractVector{<:Real}, ad::AutoForwardDiff)
-    f(x), AutoDiffOperators._FwdModeVJPFunc(f, x, ad)
+function AutoDiffOperators._jvp_func_impl(f::F, x::AbstractVector{<:Real}, ad::AutoForwardDiff) where F
+    return AutoDiffOperators._JVPFunc(nothing, ad, f, x)
 end
 
 
-# ToDo: Use AD parameters
-function AutoDiffOperators.with_jacobian(f, x::AbstractVector{<:Real}, ::Type{<:Matrix}, ad::AutoForwardDiff)
-    y = f(x)
-    R = promote_type(eltype(x), eltype(y))
-    n_y, n_x = length(y), length(x)
-    J = similar(y, R, (n_y, n_x))
-    J[:,:] = ForwardDiff.jacobian(f, x) # ForwardDiff.jacobian is not type-stable
-    f(x), J
+function AutoDiffOperators._with_vjp_func_impl(f::F, x::AbstractVector{<:Real}, ad::AutoForwardDiff) where F
+    f(x), _FwdModeVJPFunc(nothing, ad, f, x)
 end
 
-
-# ToDo: Use AD parameters
-# ToDo: Use custom multi-threaded code instead of using `ForwardDiff.gradient!`?
-function with_gradient(f, x::AbstractVector{<:Real}, ad::AutoForwardDiff)
-    y = f(x)
-    AutoDiffOperators._grad_sensitivity(y) # Check that y is a real number
-    R = promote_type(eltype(x), typeof(y))
-
-    grad_f_x = similar(f, x)
-    result = ForwardDiff.DiffResults.MutableDiffResult(zero(R), (grad_f_x,))
-
-    # chunk = ForwardDiff.Chunk(x)
-    # config = ForwardDiff.GradientConfig(f, x, chunk)
-    # ForwardDiff.gradient!(result, f, x, config)
-    ForwardDiff.gradient!(result, f, x)
-    @assert DiffResults.gradient(result) === grad_f_x
-
-    # Ensure type stability:
-    return convert(R, DiffResults.value(result))::R
+struct _FwdModeVJPFunc{P,AD<:AbstractADType,F,T<:AbstractVector{<:Number}} <: Function
+    aux::P
+    ad::AD
+    f::F
+    x::T
 end
 
-end # module ForwardDiff
+function _FwdModeVJPFunc(aux::P, ad::AD, ::Type{FT}, x::T) where {P,AD<:AbstractADType,FT,T<:AbstractVector{<:Number}}
+    return _FwdModeVJPFunc{P,AD,Type{FT},T}(aux, ad, FT, x)
+end
+
+function (vjp::_FwdModeVJPFunc{Nothing})(z::AbstractVector{<:Real})
+    # ToDo: Reduce memory allocation? Would require a `with_jvp!` function.
+    f, x, ad = vjp.f, vjp.x, vjp.ad
+    U = promote_type(eltype(f(x)), eltype(x))
+    n = size(x, 1)
+    result = similar(x, U)
+    Base.Threads.@threads for i in eachindex(x)
+        tmp = similar_onehot(x, U, n, i)
+        result[i] = dot(z, with_jvp(f, x, tmp, ad)[2])
+    end
+    return result
+end
+
+=#
+
+end # module AutoDiffOperatorsForwardDiffExt

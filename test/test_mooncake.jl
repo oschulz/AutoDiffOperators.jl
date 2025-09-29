@@ -1,28 +1,30 @@
+# This file is a part of AutoDiffOperators.jl, licensed under the MIT License (MIT).
+
 using AutoDiffOperators
 using Test
 
 using LinearAlgebra
-using ADTypes: NoAutoDiff, AutoFiniteDifferences
-import FiniteDifferences
+using ADTypes: NoAutoDiff, AutoMooncake, AutoMooncakeForward
+import Mooncake
 
 include("testutils.jl")
 
 
-@testset "test FiniteDifferences" begin
-    ADT = AutoFiniteDifferences
-    ad_module = FiniteDifferences
+@testset "test mooncake" begin
+    ADT = AutoMooncake
+    ad_module = Mooncake
     structargs = false
     ad = ADSelector(ad_module)
-    fwd_adsel = ad
-    rev_adsel = ad
+    fwd_adsel = AutoMooncakeForward()
+    rev_adsel = AutoMooncake()
 
     @test ADSelector(ad) === ad
     @test ADSelector(Val(nameof(ad_module))) isa ADT
     @test ADSelector(nameof(ad_module)) isa ADT
-    @test ADSelector(ad_module) isa ADT
     @test convert(ADSelector, Val(nameof(ad_module))) isa ADT
     @test convert(ADSelector, nameof(ad_module)) isa ADT
     @test convert(ADSelector, ad_module) isa ADT
+    @test ADSelector(ad_module) isa ADT
 
     @testset "fwd and rev sel for $ad" begin
         @test @inferred(forward_adtype(ad)) == fwd_adsel
