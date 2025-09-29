@@ -56,9 +56,6 @@ can be used to interface with various AD-backends, by using
 The following functions must be specialized for subtypes of `ADSelector`:
 [`with_jvp`](@ref), [`with_vjp_func`](@ref).
 
-[`AutoDiffOperators.supports_structargs`](@ref) should be specialized if
-applicable.
-
 A default implementation is provided for [`with_gradient`](@ref), but
 specialized implementations may often be more performant.
 
@@ -106,24 +103,3 @@ function reverse_ad_selector end
 export reverse_ad_selector
 
 reverse_ad_selector(ad::ADSelector) = ad
-
-
-"""
-    AutoDiffOperators.supports_structargs(ad::ADSelector)::Boolean
-
-Returns `true` if `ad` supports structured function arguments or `false` if
-`ad` only supports vectors of real numbers.
-
-Since `ad` may use different backends for forward- and reverse-mode
-AD, use `supports_structargs(forward_ad_selector(ad))` and 
-`supports_structargs(reverse_ad_selector(ad))` to check if `ad` supports
-structured arguments for the desired operation.
-"""
-function supports_structargs end
-
-supports_structargs(::AbstractADType) = false
-
-supports_structargs(::AutoZygote) = true
-supports_structargs(::AutoFiniteDifferences) = true
-# ToDo: Support structured arguments in AutoDiffOperators Enzyme implementation (since Enzyme itself is capable of it).
-supports_structargs(::AutoEnzyme) = false

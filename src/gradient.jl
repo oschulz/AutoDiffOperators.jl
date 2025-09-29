@@ -2,7 +2,7 @@
 
 
 """
-    with_gradient(f, x, ad::ADSelector)
+    with_gradient(f, x::AbstractVector{<:Number}, ad::ADSelector)
 
 Returns a tuple (f(x), ∇f(x)) with the gradient ∇f(x) of `f` at `x`.
 
@@ -16,7 +16,7 @@ _grad_sensitivity(y::Number) = one(y)
 _grad_sensitivity(@nospecialize(::Complex)) = error("f(x) is a complex number, but with_gradient expects it to a real number")
 _grad_sensitivity(@nospecialize(::T)) where T = error("f(x) is of type $(nameof(T)), but with_gradient expects it to a real number")
 
-function with_gradient(f, x, ad::ADSelector)
+function with_gradient(f, x::AbstractVector{<:Number}, ad::ADSelector)
     y, vjp = with_vjp_func(f, x, ad)
     y isa Real || throw(ArgumentError("with_gradient expects f(x) to return a real number"))
     grad_f_x = vjp(_grad_sensitivity(y))
@@ -25,7 +25,7 @@ end
 
 
 """
-    with_gradient!!(f, δx, x, ad::ADSelector)
+    with_gradient!!(f, δx, x::AbstractVector{<:Number}, ad::ADSelector)
 
 Returns a tuple (f(x), ∇f(x)) with the gradient `∇f(x)`` of `f` at `x`.
 
@@ -38,11 +38,14 @@ efficient implementations.
 function with_gradient!! end
 export with_gradient!!
 
-with_gradient!!(f, @nospecialize(δx), x, ad::ADSelector) = with_gradient(f, x, ad::ADSelector)
+# ToDo: Copy result of with_gradient to δx if mutable, convert to same type if immutable:
+function with_gradient!!(f, @nospecialize(δx::AbstractVector{<:Number}), x::AbstractVector{<:Number}, ad::ADSelector)
+    return with_gradient(f, x, ad::ADSelector)
+end
 
 
 """
-    only_gradient(f, x, ad::ADSelector)
+    only_gradient(f, x::AbstractVector{<:Number}, ad::ADSelector)
 
 Returns the gradient ∇f(x) of `f` at `x`.
 
@@ -51,7 +54,7 @@ See also [`with_gradient(f, x, ad)`](@ref).
 function only_gradient end
 export only_gradient
 
-only_gradient(f, x, ad::ADSelector) = with_gradient(f, x, ad)[2]
+only_gradient(f, x::AbstractVector{<:Number}, ad::ADSelector) = with_gradient(f, x, ad)[2]
 
 
 
@@ -61,7 +64,7 @@ struct _ValGradFunc{F,AD} <: Function
 end
 _ValGradFunc(::Type{FT}, ad::AD) where {FT,AD<:ADSelector}  = _ValGradFunc{Type{FT},AD}(FT, ad)
 
-(f::_ValGradFunc)(x) = with_gradient(f.f, x, f.ad)
+(f::_ValGradFunc)(x::AbstractVector{<:Number}) = with_gradient(f.f, x, f.ad)
 
 """
     valgrad_func(f, ad::ADSelector)
@@ -83,7 +86,7 @@ struct _GenericGradientFunc{F,AD} <: Function
 end
 _GenericGradientFunc(::Type{FT}, ad::AD) where {FT,AD<:ADSelector}  = _GenericGradientFunc{Type{FT},AD}(FT, ad)
 
-(f::_GenericGradientFunc)(x) = only_gradient(f.f, x, f.ad)
+(f::_GenericGradientFunc)(x::AbstractVector{<:Number}) = only_gradient(f.f, x, f.ad)
 
 """
     gradient_func(f, ad::ADSelector)
@@ -102,7 +105,7 @@ struct _GenericGradient!Func{F,AD} <: Function
 end
 _GenericGradient!Func(::Type{FT}, ad::AD) where {FT,AD<:ADSelector}  = _GenericGradient!Func{Type{FT},AD}(FT, ad)
 
-function (f!::_GenericGradient!Func)(δx, x)
+function (f!::_GenericGradient!Func)(δx::AbstractVector{<:Number}, x::AbstractVector{<:Number})
     _, δx_new = with_gradient(f!.f, x, f!.ad)
     if !(δx === δx_new)
         δx .= δx_new

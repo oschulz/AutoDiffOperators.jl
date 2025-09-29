@@ -22,7 +22,7 @@ end
 
 
 
-function AutoDiffOperators.with_vjp_func(f, x, ::AutoZygote)
+function AutoDiffOperators.with_vjp_func(f, x::AbstractVector{<:Real}, ::AutoZygote)
     y = f(x)
     _, pullback = Zygote.pullback(f, x)
     _with_vjp_func_result(x, y, pullback)

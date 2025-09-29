@@ -15,6 +15,3 @@ export DiffIfAD
 
 forward_ad_selector(ad::DiffIfAD) = DiffIfAD(forward_ad_selector(ad.backend))
 reverse_ad_selector(ad::DiffIfAD) = DiffIfAD(reverse_ad_selector(ad.backend))
-
-# Support for struct values not implemented yet:
-supports_structargs(ad::DiffIfAD) = false

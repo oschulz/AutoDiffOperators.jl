@@ -22,11 +22,6 @@ function test_adsel_functionality(ad::ADSelector)
         y_g_ref = g(x)
         grad_g_x_ref = ForwardDiff.gradient(g, x)
 
-        f_nv(x) = sum(x.a .* x.a) * x.b
-        x_nv = (a = [1.0, 2.0], b = 2.0)
-        y_nv_ref = 10.0
-        grad_nv_ref = (a = [4.0, 8.0], b = 5.0)
-
         wj_y, J = @inferred with_jacobian(f, x, LinearMap, ad)
         @test wj_y ≈ y_f_ref
         @test J isa FunctionMap
@@ -52,13 +47,6 @@ function test_adsel_functionality(ad::ADSelector)
             fill!(δx, NaN)
             @test gradient!_func(g, ad)(δx, x) === δx
             @test δx ≈ grad_g_x_ref
-        end
-
-        if AutoDiffOperators.supports_structargs(reverse_ad_selector(ad))
-            @test approx_cmp(with_gradient(f_nv, x_nv, ad), (y_nv_ref, grad_nv_ref))
-            @test approx_cmp(only_gradient(f_nv, x_nv, ad), grad_nv_ref)
-            @test approx_cmp(valgrad_func(f_nv, ad)(x_nv), (y_nv_ref, grad_nv_ref))
-            @test approx_cmp(gradient_func(f_nv, ad)(x_nv), grad_nv_ref)
         end
     end
 end

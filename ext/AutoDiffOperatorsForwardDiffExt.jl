@@ -25,7 +25,7 @@ function AutoDiffOperators.with_gradient(f, x::AbstractVector{<:Real}, ad::AutoF
 end
 
 
-function AutoDiffOperators.only_gradient(f, x, ad::AutoForwardDiff)
+function AutoDiffOperators.only_gradient(f, x::AbstractVector{<:Real}, ad::AutoForwardDiff)
     T = eltype(x)
     U = Core.Compiler.return_type(f, Tuple{typeof(x)})
     R = promote_type(T, U)
@@ -44,7 +44,7 @@ end
 
 
 
-# ToDo: Specialize `AutoDiffOperators.with_gradient!!(f, δx, x, ad::AutoForwardDiff)`
+# ToDo: Specialize `AutoDiffOperators.with_gradient!!(f, δx, x::AbstractVector{<:function AutoDiffOperators.only_gradient(f, x::AbstractVector{<:Real}, ad::AutoForwardDiff)
 
 
 struct _JacVecProdTag{F, T} end

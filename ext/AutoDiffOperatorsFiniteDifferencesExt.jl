@@ -16,12 +16,12 @@ const default_method = FiniteDifferences.central_fdm(5, 1)
 _get_method(ad::AutoFiniteDifferences) = ad.fdm
 
 
-function AutoDiffOperators.with_gradient(f, x, ad::AutoFiniteDifferences)
+function AutoDiffOperators.with_gradient(f, x::AbstractVector{<:Real}, ad::AutoFiniteDifferences)
     f(x), only(FiniteDifferences.grad(_get_method(ad), f, x))
 end
 
 
-function AutoDiffOperators.with_jvp(f, x, z, ad::AutoFiniteDifferences)
+function AutoDiffOperators.with_jvp(f, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ad::AutoFiniteDifferences)
     f(x), FiniteDifferences.jvp(_get_method(ad), f, (x, z))
 end
 
@@ -37,7 +37,7 @@ function (vjp::_FiniteDifferencesVJPFunc)(z)
     only(FiniteDifferences.j′vp(vjp.method, vjp.f, z, vjp.x))
 end
 
-function AutoDiffOperators.with_vjp_func(f, x, ad::AutoFiniteDifferences)
+function AutoDiffOperators.with_vjp_func(f, x::AbstractVector{<:Real}, ad::AutoFiniteDifferences)
     f(x), _FiniteDifferencesVJPFunc(f, x, _get_method(ad))
 end
 

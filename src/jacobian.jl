@@ -5,7 +5,7 @@
 
 
 """
-    with_jacobian(f, x, OP, ad::ADSelector)
+    with_jacobian(f, x::AbstractVector{<:Number}, OP, ad::ADSelector)
 
 Returns a tuple `(f(x), J)` with a multiplicative Jabobian operator `J`
 of type `OP`.
@@ -48,21 +48,21 @@ struct _JVPFunc{F,V,AD<:ADSelector} <: Function
     x::V
     ad::AD
 end
-_JVPFunc(::Type{FT}, x::V, ad::AD) where {FT,V,AD<:ADSelector}  = _JVPFunc{Type{FT},V,AD}(FT, x, ad)
+_JVPFunc(::Type{FT}, x::V, ad::AD) where {FT,V<:AbstractVector{<:Number},AD<:ADSelector}  = _JVPFunc{Type{FT},V,AD}(FT, x, ad)
 
-(jvp_func::_JVPFunc)(z) = with_jvp(jvp_func.f, jvp_func.x, z, jvp_func.ad)[2]
+(jvp_func::_JVPFunc)(z::AbstractVector{<:Number}) = with_jvp(jvp_func.f, jvp_func.x, z, jvp_func.ad)[2]
 
 """
-    jvp_func(f, x, ad::ADSelector)
+    jvp_func(f, x::AbstractVector{<:Number}, ad::ADSelector)
 
 Returns a function `jvp` with `jvp(z) == J * z`.
 """
-jvp_func(f, x, ad::ADSelector) = _JVPFunc(f, x, forward_ad_selector(ad))
+jvp_func(f, x::AbstractVector{<:Number}, ad::ADSelector) = _JVPFunc(f, x, forward_ad_selector(ad))
 export jvp_func
 
 
 """
-    with_jvp(f, x, z, ad::ADSelector)
+    with_jvp(f, x::AbstractVector{<:Number}, z::AbstractVector{<:Number}, ad::ADSelector)
 
 Returns a tuple `(f(x), J * z)`.
 """
@@ -74,7 +74,7 @@ export with_jvp
 
 
 """
-    with_vjp_func(f, x, ad::ADSelector)
+    with_vjp_func(f, x::AbstractVector{<:Number}, ad::ADSelector)
 
 Returns a tuple `(f(x), vjp)` with the function `vjp(z) ≈ J' * z`.
 """
