@@ -23,8 +23,6 @@ include("testutils.jl")
     @test convert(ADSelector, Val(nameof(ad_module))) isa ADT
     @test convert(ADSelector, nameof(ad_module)) isa ADT
     @test convert(ADSelector, ad_module) isa ADT
-    @test_deprecated ADModule(:Zygote) isa ADT
-    @test_deprecated ADModule(Zygote) isa ADT
 
     @testset "fwd and rev sel for $ad" begin
         @test @inferred(forward_ad_selector(ad)) == fwd_adsel

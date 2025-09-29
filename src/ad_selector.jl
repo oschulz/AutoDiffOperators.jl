@@ -1,10 +1,6 @@
 # This file is a part of AutoDiffOperators.jl, licensed under the MIT License (MIT).
 
 
-@deprecate ADModule(m::Symbol) ADSelector(m)
-@deprecate ADModule(m::Module) ADSelector(m)
-
-
 """
     abstract type AutoDiffOperators.WrappedADSelector 
 

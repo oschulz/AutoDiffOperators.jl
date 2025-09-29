@@ -1,9 +1,6 @@
 # This file is a part of AutoDiffOperators.jl, licensed under the MIT License (MIT).
 
 
-@deprecate jacobian_matrix(f, x, ad::ADSelector) with_jacobian(f, x, Matrix, ad)[2]
-
-
 """
     with_jacobian(f, x::AbstractVector{<:Number}, OP, ad::ADSelector)
 

@@ -29,7 +29,6 @@ function test_adsel_functionality(ad::ADSelector)
         @test @inferred(J * J_z_r) ≈ J_f_ref * J_z_r
         @test @inferred(J_z_l' * J) ≈ J_z_l' * J_f_ref
         @test approx_cmp(@inferred(with_jacobian(f, x, Matrix, ad)), (y_f_ref, J_f_ref))
-        @test_deprecated jacobian_matrix(f, x, ad) ≈ J_f_ref
         @test with_gradient(g, x, ad)[1] ≈ y_g_ref
         @test with_gradient(g, x, ad)[2] ≈ grad_g_x_ref
         @test only_gradient(g, x, ad) ≈ grad_g_x_ref
