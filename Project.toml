@@ -10,14 +10,12 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 [weakdeps]
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 FiniteDifferences = "26cc04aa-876d-5657-8c51-4c34ba976000"
-ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 LinearMaps = "7a12625a-238d-50fd-b39a-03d52299707e"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [extensions]
 AutoDiffOperatorsEnzymeExt = "Enzyme"
 AutoDiffOperatorsFiniteDifferencesExt = "FiniteDifferences"
-AutoDiffOperatorsForwardDiffExt = "ForwardDiff"
 AutoDiffOperatorsLinearMapsExt = "LinearMaps"
 AutoDiffOperatorsStaticArraysExt = "StaticArrays"
 
@@ -26,7 +24,6 @@ ADTypes = "1.18"
 DifferentiationInterface = "0.6, 0.7"
 Enzyme = "0.13"
 FiniteDifferences = "0.12"
-ForwardDiff = "0.10, 1"
 LinearAlgebra = "1"
 LinearMaps = "3"
 StaticArrays = "1"
