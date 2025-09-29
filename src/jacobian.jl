@@ -70,8 +70,9 @@ end
 
 function _with_jacobian_matrix_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType) where F
     float_x = with_floatlike_contents(x)
+    T_x = typeof(float_x)
     T_f_x = _primal_return_type(f, float_x)
-    T_J = _matrix_type(T_f_x, typeof(float_x))
+    T_J = _matrix_type(T_f_x, T_x)
     f_x, J = DI.value_and_jacobian(f, ad, float_x)
     return convert(T_f_x, f_x)::T_f_x, convert(T_J, J)::T_J
 end
@@ -119,34 +120,36 @@ end
 
 function _jvp_func_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType) where F
     float_x = with_floatlike_contents(x)
+    Tx = typeof(float_x)
+    Ty = _concrete_return_vector_type(f, float_x)
     prep = DI.prepare_pushforward_same_point(f, ad, float_x, (float_x,))
-    f_jvp = _JVPFunc((;prep = prep), ad, f, float_x)
-    return f_jvp
+    f_jvp = _JVPFunc((;prep = prep), ad, f, float_x, Ty)
+    wrapped_f_jvp = FunctionWrapper{Ty,Tuple{Tx}}(f_jvp)
+    return wrapped_f_jvp
 end
 
-struct _JVPFunc{P,AD<:AbstractADType,F,T<:AbstractVector{<:Number}} <: Function
+struct _JVPFunc{P,AD<:AbstractADType,F,Tx<:AbstractVector{<:Number},Ty<:AbstractVector{<:Number}} <: Function
     aux::P
     ad::AD
     f::F
-    x::T
+    x::Tx
+end
+function _JVPFunc(aux::P, ad::AD, f::F, x::Tx, ::Type{Ty}) where {P,AD,F,Tx,Ty}
+    return _JVPFunc{P,AD,F,Tx,Ty}(aux, ad, f, x)
+end
+function _JVPFunc(aux::P, ad::AD, ::Type{FT}, x::Tx, ::Type{Ty}) where {P,AD,FT,Tx,Ty}
+    return _JVPFunc{P,AD,Type{FT},Tx,Ty}(aux, ad, FT, x)
 end
 
-function _JVPFunc(aux::P, ad::AD, ::Type{FT}, x::T) where {P,AD<:AbstractADType,FT,T<:AbstractVector{<:Number}}
-    return _JVPFunc{P,AD,Type{FT},T}(aux, ad, FT, x)
-end
-
-(f_jvp::_JVPFunc{Nothing})(z::AbstractVector{<:Number}) = with_jvp(f_jvp.f, f_jvp.x, z, f_jvp.ad)[2]
-
-function (f_jvp::_JVPFunc{<:NamedTuple{(:prep,)}})(z::AbstractVector{<:Real})
+function (f_jvp::_JVPFunc{<:NamedTuple{(:prep,)},AD,F,Tx,Ty})(z::AbstractVector{<:Real}) where {AD,F,Tx,Ty}
+    @assert !any(isnan, z)
     prep = f_jvp.aux.prep
     f = f_jvp.f
     float_x = f_jvp.x
-    float_z = with_floatlike_contents(z)
-    T_z = typeof(float_z)
-    T_f_x = _primal_return_type(f, float_x)
-    T_J_z = _similar_type(T_z, T_f_x)
+    float_z = convert(Tx, z)::Tx
     J_z = only(DI.pushforward(f, prep, f_jvp.ad, float_x, (float_z,)))
-    return convert(T_J_z, J_z)::T_J_z
+    @assert !any(isnan, J_z)
+    return convert(Ty, J_z)::Ty
 end
 
 
@@ -165,31 +168,35 @@ end
 
 function _with_vjp_func_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType) where F
     float_x = with_floatlike_contents(x)
+    Tx = typeof(float_x)
     f_x = f(float_x)
+    Ty = typeof(f_x)
     prep = DI.prepare_pullback_same_point(f, ad, float_x, (f_x,))
-    f_vjp = _VJPFunc((;prep = prep), ad, f, float_x)
-    return f_x, f_vjp
+    f_vjp = _VJPFunc((;prep = prep), ad, f, float_x, Ty)
+    f_vjp_wrapped = FunctionWrapper{Tx,Tuple{Ty}}(f_vjp)
+    return f_x, f_vjp_wrapped
 end
 
-struct _VJPFunc{P,AD<:AbstractADType,F,T<:AbstractVector{<:Number}} <: Function
+struct _VJPFunc{P,AD<:AbstractADType,F,Tx<:AbstractVector{<:Number},Ty<:AbstractVector{<:Number}} <: Function
     aux::P
     ad::AD
     f::F
-    x::T
+    x::Tx
+end
+function _VJPFunc(aux::P, ad::AD, f::F, x::Tx, ::Type{Ty}) where {P,AD,F,Tx,Ty}
+    return _VJPFunc{P,AD,F,Tx,Ty}(aux, ad, f, x)
+end
+function _VJPFunc(aux::P, ad::AD, ::Type{FT}, x::Tx, ::Type{Ty}) where {P,AD,FT,Tx,Ty}
+    return _VJPFunc{P,AD,Type{FT},Tx,Ty}(aux, ad, FT, x)
 end
 
-function _VJPFunc(aux::P, ad::AD, ::Type{FT}, x::T) where {P,AD<:AbstractADType,FT,T<:AbstractVector{<:Number}}
-    return _VJPFunc{P,AD,Type{FT},T}(aux, ad, FT, x)
-end
-
-function (f_vjp::_VJPFunc{<:NamedTuple{(:prep,)}})(z::AbstractVector{<:Real})
+function (f_vjp::_VJPFunc{<:NamedTuple{(:prep,)},AD,F,Tx,Ty})(z::AbstractVector{<:Real}) where {AD,F,Tx,Ty}
+    @assert !any(isnan, z)
     prep = f_vjp.aux.prep
     f = f_vjp.f
     float_x = f_vjp.x
-    float_z = with_floatlike_contents(z)
-    T_x = typeof(float_x)
-    T_z = typeof(float_z)
-    T_z_J = _similar_type(T_z, T_x)
+    float_z = convert(Ty, z)::Ty
     z_J = DI.pullback(f, prep, f_vjp.ad, float_x, (float_z,))[1]
-    return convert(T_z_J, z_J)::T_z_J
+    @assert !any(isnan, z_J)
+    return convert(Tx, z_J)::Tx
 end

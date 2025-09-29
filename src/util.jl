@@ -35,6 +35,14 @@ end
 
 _primal_return_type(f::F, ::T) where {F, T} = Core.Compiler.return_type(f, Tuple{T})
 
+function _concrete_return_vector_type(f::F, x::T) where {F, T}
+    R = Core.Compiler.return_type(f, Tuple{T})
+    return _concrete_return_vector_type_impl(R, f, x)
+end
+_concrete_return_vector_type_impl(::Type{R}, ::Any, ::Any) where {R<:AbstractVector{<:Real}} = R
+_concrete_return_vector_type_impl(::Type{R}, f, x) where {R} = typeof(f(x))
+
+
 _similar_type(::Type{T}) where {T<:AbstractVector} = Core.Compiler.return_type(similar, Tuple{T})
 
 _similar_type(::Type{T},::Type{U}) where {T<:AbstractVector, U<:AbstractVector} = Core.Compiler.return_type(vcat, Tuple{T,U})

@@ -7,6 +7,7 @@ using ForwardDiff
 using LinearMaps
 
 using ADTypes: NoAutoDiff
+using FunctionWrappers: FunctionWrapper
 
 include("approx_cmp.jl")
 
@@ -43,16 +44,14 @@ function test_adsel_functionality(ad::ADSelector)
         @test f_x ≈ f_x_ref
         @test J_z ≈ J_f_ref * J_z_r
 
-        # With some AD-frameworks like Mooncake, DI prep is not type-stable,
-        # so don't use @inferred with `jvp_func` and the like.
 
-        @test jvp_func(f, x, ad) isa Function
+        @test @inferred jvp_func(f, x, ad) isa Union{Function,FunctionWrapper}
         f_jvp = jvp_func(f, x, ad)
         @test @inferred(f_jvp(J_z_r)) isa AbstractVector{<:Number}
         J_z = f_jvp(J_z_r)
         @test J_z ≈ J_f_ref * J_z_r
 
-        @test with_vjp_func(f, x, ad) isa Tuple{Vararg{Any,2}}
+        @test @inferred with_vjp_func(f, x, ad) isa Tuple{Vararg{Any,2}}
         f_x, f_vjp = with_vjp_func(f, x, ad)
         @test @inferred(f_vjp(J_z_l)) isa AbstractVector{<:Number}
         z_J = f_vjp(J_z_l)
@@ -62,7 +61,7 @@ function test_adsel_functionality(ad::ADSelector)
 
         @test approx_cmp(@inferred(with_jacobian(f, x, DenseMatrix, ad)), (f_x_ref, J_f_ref))
 
-        f_x, J = with_jacobian(f, x, LinearMap, ad)
+        f_x, J = @inferred with_jacobian(f, x, LinearMap, ad)
         @test f_x ≈ f_x_ref
         @test J isa FunctionMap
         @test Matrix(J) ≈ J_f_ref

@@ -12,8 +12,9 @@ using Base.Threads: nthreads, threadid, @threads
 using LinearAlgebra
 
 using ADTypes: ADTypes, AbstractADType, NoAutoDiff
-
 import DifferentiationInterface as DI
+
+using FunctionWrappers: FunctionWrapper
 
 export AbstractADType, NoAutoDiff
 
