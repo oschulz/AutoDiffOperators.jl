@@ -26,4 +26,7 @@ ADSelector(ADSelector(ForwardDiff), ADSelector(Mooncake))
 ADSelector(ForwardDiff, Mooncake)
 ```
 
-AutoDiffOperators uses [`DifferentiationInterface`](https://github.com/gdalle/DifferentiationInterface.jl) internally to interact with the various Julia AD backend packages, adding some specializations and optimizations for type stability and performance. Which backend(s) will perform best for a given use case will depend on the target function and the argument size, as well as the application (`J*z` vs. `z'*J` and gradient calculation) and the compute device (CPU vs. GPU). Please see the documentation of the individual AD backend packages for details.
+AutoDiffOperators re-exports `AbstractADType` and `NoAutoDiff` from ADTypes, so that algorithm packages that use
+AutoDiffOperators may not need to also depend on `ADTypes` explicitly.
+
+AutoDiffOperators uses [`DifferentiationInterface`](https://github.com/JuliaDiff/DifferentiationInterface.jl) internally to interact with the various Julia AD backend packages, adding some specializations and optimizations for type stability and performance. Which backend(s) will perform best for a given use case will depend on the target function and the argument size, as well as the application (`J*z` vs. `z'*J` and gradient calculation) and the compute device (CPU vs. GPU). Please see the documentation of the individual AD backend packages for details.

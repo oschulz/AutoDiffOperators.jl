@@ -11,10 +11,11 @@ using Base.Threads: nthreads, threadid, @threads
 
 using LinearAlgebra
 
-using ADTypes: ADTypes, AbstractADType
-using ADTypes: NoAutoDiff
+using ADTypes: ADTypes, AbstractADType, NoAutoDiff
 
 import DifferentiationInterface as DI
+
+export AbstractADType, NoAutoDiff
 
 include("util.jl")
 include("mulfunc_operator.jl")
