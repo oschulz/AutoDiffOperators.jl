@@ -80,3 +80,19 @@ _oftype_array_impl!!(::Val{true}, y::T, x::U) where {T<:AbstractArray,U<:Abstrac
 _oftype_array_impl!!(::Val{false}, y::T, x::U) where {T<:AbstractArray,U<:AbstractArray} = copyto!(y, x)::T
 
 _is_immutable_type(::Type{T}) where T = Val(isbitstype(T))
+
+
+
+struct _WrappedFunction{Ty,Tx} <: Function
+    f_fw::FunctionWrapper{Ty,Tuple{Tx}}
+
+    _WrappedFunction{Ty,Tx}(f_fw::FunctionWrapper{Ty,Tx}) where {Ty,Tx} = new{Ty,Tx}(f_fw)
+    _WrappedFunction{Ty,Tx}(f::F) where {Ty,Tx,F} = new{Ty,Tx}(FunctionWrapper{Ty,Tuple{Tx}}(f))
+end
+
+
+(f::_WrappedFunction{Ty,Tx})(x::Tx) where {Ty,Tx} = f.f_fw(x)
+(f::_WrappedFunction{Ty,Tx})(x) where {Ty,Tx} = f.f_fw(convert(Tx, x))
+
+# # Doesn't seem to fully decouple copy from original:
+# Base.deepcopy(f::_WrappedFunction{Ty,Tx}) where {Ty,Tx} = _WrappedFunction{Ty,Tx}(deepcopy(f.f_fw.obj[]))
