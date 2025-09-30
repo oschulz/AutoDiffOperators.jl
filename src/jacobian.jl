@@ -71,7 +71,7 @@ end
 function _with_jacobian_matrix_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType) where F
     float_x = with_floatlike_contents(x)
     T_x = typeof(float_x)
-    T_f_x = _primal_return_type(f, float_x)
+    T_f_x = _concrete_return_vector_type(f, float_x)
     T_J = _matrix_type(T_f_x, T_x)
     f_x, J = DI.value_and_jacobian(f, ad, float_x)
     return convert(T_f_x, f_x)::T_f_x, convert(T_J, J)::T_J
