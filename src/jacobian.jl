@@ -145,17 +145,14 @@ end
 function (f_jvp::_JVPFunc{<:_DIPrep,AD,F,Tx,Ty})(z::AbstractVector{<:Real}) where {AD,F,Tx,Ty}
     @assert !any(isnan, z)
     prep = f_jvp.aux.prep
-    prep_instance, prep_handle = _borrow_maybewrite(prep)
-    try
-        f = f_jvp.f
-        float_x = f_jvp.x
-        float_z = convert(Tx, z)::Tx
-        J_z = only(DI.pushforward(f, prep_instance, f_jvp.ad, float_x, (float_z,)))
-        @assert !any(isnan, J_z)
-        return convert(Ty, J_z)::Ty
-    finally
-        _return_borrowed(prep, prep_instance, prep_handle)
+    f = f_jvp.f
+    float_x = f_jvp.x
+    float_z = convert(Tx, z)::Tx
+    J_z = @_borrow_maybewrite prep begin
+        only(DI.pushforward(f, prep, f_jvp.ad, float_x, (float_z,)))
     end
+    @assert !any(isnan, J_z)
+    return convert(Ty, J_z)::Ty
 end
 
 
@@ -200,15 +197,12 @@ end
 function (f_vjp::_VJPFunc{<:_DIPrep,AD,F,Tx,Ty})(z::AbstractVector{<:Real}) where {AD,F,Tx,Ty}
     @assert !any(isnan, z)
     prep = f_vjp.aux.prep
-    prep_instance, prep_handle = _borrow_maybewrite(prep)
-    try
-        f = f_vjp.f
-        float_x = f_vjp.x
-        float_z = convert(Ty, z)::Ty
-        z_J = DI.pullback(f, prep_instance, f_vjp.ad, float_x, (float_z,))[1]
-        @assert !any(isnan, z_J)
-        return convert(Tx, z_J)::Tx
-    finally
-        _return_borrowed(prep, prep_instance, prep_handle)
+    f = f_vjp.f
+    float_x = f_vjp.x
+    float_z = convert(Ty, z)::Ty
+    z_J = @_borrow_maybewrite prep begin
+        DI.pullback(f, prep, f_vjp.ad, float_x, (float_z,))[1]
     end
+    @assert !any(isnan, z_J)
+    return convert(Tx, z_J)::Tx
 end
