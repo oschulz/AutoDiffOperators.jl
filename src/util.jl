@@ -199,3 +199,9 @@ function _return_borrowed(obj::_CacheLikePool{T}, instance::T, handle::_MaybeWri
     end
     return nothing
 end
+
+
+
+struct _DIPrep{T}
+    prep::T
+end

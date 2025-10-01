@@ -123,9 +123,9 @@ function _jvp_func_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType) whe
     Tx = typeof(float_x)
     Ty = _concrete_return_vector_type(f, float_x)
     prep = DI.prepare_pushforward_same_point(f, ad, float_x, (float_x,))
-    f_jvp = _JVPFunc((;prep = prep), ad, f, float_x, Ty)
-    wrapped_f_jvp = FunctionWrapper{Ty,Tuple{Tx}}(f_jvp)
-    return wrapped_f_jvp
+    aux = _DIPrep(_borrowable_object(_CacheLikeUse(), prep))
+    f_jvp = _JVPFunc(aux, ad, f, float_x, Ty)
+    return f_jvp
 end
 
 struct _JVPFunc{P,AD<:AbstractADType,F,Tx<:AbstractVector{<:Number},Ty<:AbstractVector{<:Number}} <: Function
@@ -141,15 +141,20 @@ function _JVPFunc(aux::P, ad::AD, ::Type{FT}, x::Tx, ::Type{Ty}) where {P,AD,FT,
     return _JVPFunc{P,AD,Type{FT},Tx,Ty}(aux, ad, FT, x)
 end
 
-function (f_jvp::_JVPFunc{<:NamedTuple{(:prep,)},AD,F,Tx,Ty})(z::AbstractVector{<:Real}) where {AD,F,Tx,Ty}
+function (f_jvp::_JVPFunc{<:_DIPrep,AD,F,Tx,Ty})(z::AbstractVector{<:Real}) where {AD,F,Tx,Ty}
     @assert !any(isnan, z)
     prep = f_jvp.aux.prep
-    f = f_jvp.f
-    float_x = f_jvp.x
-    float_z = convert(Tx, z)::Tx
-    J_z = only(DI.pushforward(f, prep, f_jvp.ad, float_x, (float_z,)))
-    @assert !any(isnan, J_z)
-    return convert(Ty, J_z)::Ty
+    prep_instance, prep_handle = _borrow_maybewrite(prep)
+    try
+        f = f_jvp.f
+        float_x = f_jvp.x
+        float_z = convert(Tx, z)::Tx
+        J_z = only(DI.pushforward(f, prep_instance, f_jvp.ad, float_x, (float_z,)))
+        @assert !any(isnan, J_z)
+        return convert(Ty, J_z)::Ty
+    finally
+        _return_borrowed(prep, prep_instance, prep_handle)
+    end
 end
 
 
@@ -172,9 +177,9 @@ function _with_vjp_func_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType
     f_x = f(float_x)
     Ty = typeof(f_x)
     prep = DI.prepare_pullback_same_point(f, ad, float_x, (f_x,))
-    f_vjp = _VJPFunc((;prep = prep), ad, f, float_x, Ty)
-    f_vjp_wrapped = FunctionWrapper{Tx,Tuple{Ty}}(f_vjp)
-    return f_x, f_vjp_wrapped
+    aux = _DIPrep(_borrowable_object(_CacheLikeUse(), prep))
+    f_vjp = _VJPFunc(aux, ad, f, float_x, Ty)
+    return f_x, f_vjp
 end
 
 struct _VJPFunc{P,AD<:AbstractADType,F,Tx<:AbstractVector{<:Number},Ty<:AbstractVector{<:Number}} <: Function
@@ -190,13 +195,18 @@ function _VJPFunc(aux::P, ad::AD, ::Type{FT}, x::Tx, ::Type{Ty}) where {P,AD,FT,
     return _VJPFunc{P,AD,Type{FT},Tx,Ty}(aux, ad, FT, x)
 end
 
-function (f_vjp::_VJPFunc{<:NamedTuple{(:prep,)},AD,F,Tx,Ty})(z::AbstractVector{<:Real}) where {AD,F,Tx,Ty}
+function (f_vjp::_VJPFunc{<:_DIPrep,AD,F,Tx,Ty})(z::AbstractVector{<:Real}) where {AD,F,Tx,Ty}
     @assert !any(isnan, z)
     prep = f_vjp.aux.prep
-    f = f_vjp.f
-    float_x = f_vjp.x
-    float_z = convert(Ty, z)::Ty
-    z_J = DI.pullback(f, prep, f_vjp.ad, float_x, (float_z,))[1]
-    @assert !any(isnan, z_J)
-    return convert(Tx, z_J)::Tx
+    prep_instance, prep_handle = _borrow_maybewrite(prep)
+    try
+        f = f_vjp.f
+        float_x = f_vjp.x
+        float_z = convert(Ty, z)::Ty
+        z_J = DI.pullback(f, prep_instance, f_vjp.ad, float_x, (float_z,))[1]
+        @assert !any(isnan, z_J)
+        return convert(Tx, z_J)::Tx
+    finally
+        _return_borrowed(prep, prep_instance, prep_handle)
+    end
 end
