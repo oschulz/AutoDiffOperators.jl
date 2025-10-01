@@ -3,7 +3,7 @@
 using AutoDiffOperators
 using Test
 
-using AutoDiffOperators: _CacheLikeUse, _MaybeWriteIdxHandle, _borrowable_object, _borrow_maybewrite, _return_borrowed
+using AutoDiffOperators: _CacheLikeUse, _MaybeWriteIdxHandle, _borrowable_object, _borrow_maybewrite, _return_borrowed, @_borrow_maybewrite
 using AutoDiffOperators: _CacheLikePool
 
 @testset "test_util" begin
@@ -36,12 +36,9 @@ using AutoDiffOperators: _CacheLikePool
     cmp_results = fill(false, 1000)
     tasks = [
         Threads.@spawn begin
-            local myinstance, myhandle = _borrow_maybewrite(obj)
-            try
-                cmp_results[i] = myinstance == value
+            @_borrow_maybewrite obj begin
+                cmp_results[i] = (obj == value)
                 sleep(0.001 * rand())
-            finally
-                _return_borrowed(obj, myinstance, myhandle)
             end
         end
         for i in eachindex(cmp_results)

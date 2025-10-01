@@ -112,6 +112,22 @@ end
 _borrow_maybewrite(obj) = obj, nothing
 _return_borrowed(obj, ::Any, ::Nothing) = nothing
 
+
+macro _borrow_maybewrite(objvar, expr)
+    @assert objvar isa Symbol
+    quote
+        instance, handle = _borrow_maybewrite($(esc(objvar)))
+        try
+            let $(esc(objvar)) = instance
+                $(esc(expr))
+            end
+        finally
+            _return_borrowed($(esc(objvar)), instance, handle)
+        end
+    end
+end
+
+
 const _ConditionType = typeof(Threads.Condition())
 
 
