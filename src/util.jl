@@ -96,3 +96,106 @@ end
 
 # # Doesn't seem to fully decouple copy from original:
 # Base.deepcopy(f::_WrappedFunction{Ty,Tx}) where {Ty,Tx} = _WrappedFunction{Ty,Tx}(deepcopy(f.f_fw.obj[]))
+
+
+
+@kwdef struct _CacheLikeUse
+    nreaders::Int = nthreads()
+    nwriters::Int = nthreads()
+end
+
+
+@inline _borrowable_object(usage::_CacheLikeUse, value::T) where {T} = _borrowable_object_impl(_is_immutable_type(T), usage, value)
+@inline _borrowable_object_impl(::Val{true}, ::_CacheLikeUse, value::T) where {T} = value
+@inline _borrowable_object_impl(::Val{false}, usage::_CacheLikeUse, value::T) where {T} = _CacheLikePool(value, usage.nwriters)
+
+_borrow_maybewrite(obj) = obj, nothing
+_return_borrowed(obj, ::Any, ::Nothing) = nothing
+
+const _ConditionType = typeof(Threads.Condition())
+
+
+struct _CacheLikePool{T}
+    value::T
+    isvalid::BitVector
+    isavail::BitVector
+    instances::Vector{T}
+    cond::_ConditionType
+end
+
+function _CacheLikePool(value::T, n_max::Int) where {T}
+    n_max = Threads.nthreads()
+    instances = Vector{T}(undef, n_max)
+    isvalid = BitVector(undef, n_max)
+    fill!(isvalid, false)
+    isavail = BitVector(undef, n_max)
+    fill!(isavail, true)
+    cond = Threads.Condition()
+    @assert eachindex(isvalid) == eachindex(isavail) == eachindex(instances)
+    return _CacheLikePool{T}(value, isvalid, isavail, instances, cond)
+end
+
+struct _MaybeWriteIdxHandle
+    instance_idx::Int
+end
+
+function _borrow_maybewrite(obj::_CacheLikePool{T}) where {T}
+    (;isvalid, isavail, instances, cond) = obj
+
+    instance_idx::Int = -1
+    instance_valid::Bool = false
+    @lock cond begin
+        success::Bool = false
+        while !success
+            found = findfirst(isavail)
+            if found isa Nothing
+                wait(cond)
+            else
+                instance_idx = found
+                success = true
+            end
+        end
+
+        # @assert isavail[instance_idx]
+        isavail[instance_idx] = false
+        instance_valid = isvalid[instance_idx]
+    end
+
+    instance::T = if instance_valid
+        instances[instance_idx]
+    else
+        new_instance = deepcopy(obj.value)
+        instances[instance_idx] = new_instance
+        @lock cond isvalid[instance_idx] = true
+        new_instance
+    end
+
+    # @assert isvalid[instance_idx]
+    # @assert isassigned(instances, instance_idx)
+    # @assert instances[instance_idx] === instance
+    # @assert !isavail[instance_idx]
+
+    return instance, _MaybeWriteIdxHandle(instance_idx)
+end
+
+function _return_borrowed(obj::_CacheLikePool{T}, instance::T, handle::_MaybeWriteIdxHandle) where {T}
+    (;isvalid, isavail, instances, cond) = obj
+    instance_idx = handle.instance_idx
+    @lock cond begin
+        try
+            if !isvalid[instance_idx]
+                throw(ErrorException("Object handle returned to _CacheLikePool does reference an invalid object, invalid handle returned?"))
+            elseif isavail[instance_idx]
+                instances[instance_idx] = deepcopy(obj.value)
+                throw(ErrorException("Object handle $handle returned to _CacheLikePool is already marked as available ($isavail), wrong handle returned?"))
+            elseif instances[instance_idx] !== instance
+                instances[instance_idx] = deepcopy(obj.value)
+                throw(ErrorException("Object instance (type $(nameof(T))) returned to _CacheLikePool does not match borrowed instance for given handle, wrong object/handle returned?"))
+            end
+        finally
+            isavail[instance_idx] = true
+            notify(cond; all = false)
+        end
+    end
+    return nothing
+end

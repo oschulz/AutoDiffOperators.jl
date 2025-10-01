@@ -45,7 +45,7 @@ function test_adsel_functionality(ad::ADSelector)
         @test J_z ≈ J_f_ref * J_z_r
 
 
-        @test @inferred jvp_func(f, x, ad) isa Union{Function,FunctionWrapper}
+        @test @inferred jvp_func(f, x, ad) isa Function
         f_jvp = jvp_func(f, x, ad)
         @test @inferred(f_jvp(J_z_r)) isa AbstractVector{<:Number}
         J_z = f_jvp(J_z_r)

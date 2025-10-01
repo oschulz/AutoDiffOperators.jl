@@ -4,6 +4,7 @@ import Test
 
 Test.@testset "Package AutoDiffOperators" begin
     include("test_aqua.jl")
+    include("test_util.jl")
     include("test_linear_maps.jl")
     include("test_adselector.jl")
     include("test_finitedifferences.jl")
