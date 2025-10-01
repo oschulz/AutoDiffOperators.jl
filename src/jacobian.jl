@@ -143,7 +143,6 @@ function _JVPFunc(aux::P, ad::AD, ::Type{FT}, x::Tx, ::Type{Ty}) where {P,AD,FT,
 end
 
 function (f_jvp::_JVPFunc{<:_DIPrep,AD,F,Tx,Ty})(z::AbstractVector{<:Real}) where {AD,F,Tx,Ty}
-    @assert !any(isnan, z)
     prep = f_jvp.aux.prep
     f = f_jvp.f
     float_x = f_jvp.x
@@ -151,7 +150,6 @@ function (f_jvp::_JVPFunc{<:_DIPrep,AD,F,Tx,Ty})(z::AbstractVector{<:Real}) wher
     J_z = @_borrow_maybewrite prep begin
         only(DI.pushforward(f, prep, f_jvp.ad, float_x, (float_z,)))
     end
-    @assert !any(isnan, J_z)
     return convert(Ty, J_z)::Ty
 end
 
@@ -195,7 +193,6 @@ function _VJPFunc(aux::P, ad::AD, ::Type{FT}, x::Tx, ::Type{Ty}) where {P,AD,FT,
 end
 
 function (f_vjp::_VJPFunc{<:_DIPrep,AD,F,Tx,Ty})(z::AbstractVector{<:Real}) where {AD,F,Tx,Ty}
-    @assert !any(isnan, z)
     prep = f_vjp.aux.prep
     f = f_vjp.f
     float_x = f_vjp.x
@@ -203,6 +200,5 @@ function (f_vjp::_VJPFunc{<:_DIPrep,AD,F,Tx,Ty})(z::AbstractVector{<:Real}) wher
     z_J = @_borrow_maybewrite prep begin
         DI.pullback(f, prep, f_vjp.ad, float_x, (float_z,))[1]
     end
-    @assert !any(isnan, z_J)
     return convert(Tx, z_J)::Tx
 end
