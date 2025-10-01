@@ -125,7 +125,8 @@ function _jvp_func_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType) whe
     prep = DI.prepare_pushforward_same_point(f, ad, float_x, (float_x,))
     aux = _DIPrep(_borrowable_object(_CacheLikeUse(), prep))
     f_jvp = _JVPFunc(aux, ad, f, float_x, Ty)
-    return f_jvp
+    wrapped_f_jvp = _WrappedFunction{Ty,Tx}(f_jvp)
+    return wrapped_f_jvp
 end
 
 struct _JVPFunc{P,AD<:AbstractADType,F,Tx<:AbstractVector{<:Number},Ty<:AbstractVector{<:Number}} <: Function
@@ -179,7 +180,8 @@ function _with_vjp_func_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType
     prep = DI.prepare_pullback_same_point(f, ad, float_x, (f_x,))
     aux = _DIPrep(_borrowable_object(_CacheLikeUse(), prep))
     f_vjp = _VJPFunc(aux, ad, f, float_x, Ty)
-    return f_x, f_vjp
+    f_vjp_wrapped = _WrappedFunction{Tx,Ty}(f_vjp)
+    return f_x, f_vjp_wrapped
 end
 
 struct _VJPFunc{P,AD<:AbstractADType,F,Tx<:AbstractVector{<:Number},Ty<:AbstractVector{<:Number}} <: Function
