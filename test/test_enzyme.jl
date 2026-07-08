@@ -15,8 +15,8 @@ include("testutils.jl")
     ad_module = Enzyme
     structargs = false
     ad = ADSelector(ad_module)
-    fwd_adsel = AutoEnzyme(function_annotation = Enzyme.Const, mode = Enzyme.ForwardWithPrimal)
-    rev_adsel = AutoEnzyme(function_annotation = Enzyme.Const, mode = Enzyme.ReverseWithPrimal)
+    fwd_adsel = AutoEnzyme(function_annotation = Enzyme.Const, mode = Enzyme.set_runtime_activity(Enzyme.ForwardWithPrimal))
+    rev_adsel = AutoEnzyme(function_annotation = Enzyme.Const, mode = Enzyme.set_runtime_activity(Enzyme.ReverseWithPrimal))
 
     @test ad.mode isa Nothing
     @test @inferred(forward_adtype(ad)).mode isa Enzyme.ForwardMode{true}
