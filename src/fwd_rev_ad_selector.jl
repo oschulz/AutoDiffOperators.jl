@@ -17,8 +17,9 @@ struct FwdRevADSelector{Fwd<:ADSelector,Rev<:ADSelector} <: WrappedADSelector
 end
 
 ADSelector(fwd, rev) = FwdRevADSelector(ADSelector(fwd), ADSelector(rev))
-ADSelector(fwd, ::Nothing) = fwd
-ADSelector(::Nothing, rev) = rev
+ADSelector(fwd, ::Nothing) = ADSelector(fwd)
+ADSelector(::Nothing, rev) = ADSelector(rev)
+ADSelector(::Nothing, ::Nothing) = NoAutoDiff()
 
 ADSelector(;fwd, rev) = ADSelector(fwd, rev)
 

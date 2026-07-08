@@ -25,3 +25,13 @@ include("testutils.jl")
 
     test_adsel_functionality(ad)
 end
+
+
+@testset "nothing as fwd/rev selector" begin
+    @test ADSelector(ForwardDiff, nothing) isa AutoForwardDiff
+    @test ADSelector(nothing, FiniteDifferences) isa AutoFiniteDifferences
+    @test ADSelector(fwd = nothing, rev = FiniteDifferences) isa AutoFiniteDifferences
+    @test @inferred(ADSelector(AutoForwardDiff(), nothing)) isa AutoForwardDiff
+    @test @inferred(ADSelector(nothing, AutoForwardDiff())) isa AutoForwardDiff
+    @test @inferred(ADSelector(nothing, nothing)) isa NoAutoDiff
+end
