@@ -117,10 +117,23 @@ function test_adsel_functionality(ad::ADSelector)
         @test g_x ≈ g_x_ref
         @test grad_g_x ≈ grad_g_x_ref
 
+        @test @inferred(valgrad_func(g, ad, x)) isa Function
+        f_∇f_prep = valgrad_func(g, ad, x)
+        @test @inferred(f_∇f_prep(x)) isa Tuple{Vararg{Any,2}}
+        g_x, grad_g_x = f_∇f_prep(x)
+        @test g_x ≈ g_x_ref
+        @test grad_g_x ≈ grad_g_x_ref
+
         @test @inferred(gradient_func(g, ad)) isa Function
         ∇f = gradient_func(g, ad)
         @test @inferred(∇f(x)) isa AbstractVector{<:Number}
         grad_g_x = ∇f(x)
+        @test grad_g_x ≈ grad_g_x_ref
+
+        @test @inferred(gradient_func(g, ad, x)) isa Function
+        ∇f_prep = gradient_func(g, ad, x)
+        @test @inferred(∇f_prep(x)) isa AbstractVector{<:Number}
+        grad_g_x = ∇f_prep(x)
         @test grad_g_x ≈ grad_g_x_ref
     end
 end

@@ -139,10 +139,14 @@ end
 
 """
     valgrad_func(f, ad::ADSelector)
+    valgrad_func(f, ad::ADSelector, dummy_x::AbstractVector{<:Real})
 
 Returns a function `f_∇f` that calculates the value and gradient of `f`
 at given points, so that `f_∇f(x)` is equivalent to
 [`with_gradient(f, x, ad)`](@ref).
+
+Passing a `dummy_x` that matches later arguments of `f_∇f` in type and size
+enables backend-specific preparation. `f_∇f` is thread-safe either way.
 """
 function valgrad_func end
 export valgrad_func
@@ -150,7 +154,19 @@ export valgrad_func
 valgrad_func(f::F, ad::ADSelector) where F = _valgrad_func_impl(f, valid_reverse_adtype(ad))
 _valgrad_func_impl(f::F, ad::AbstractADType) where F = _ValGradFunc(nothing, ad, f)
 
-# ToDo: valgrad_func(f, ad::AbstractADType, dummy_x::AbstractVector{<:Number}) with aux
+function valgrad_func(f::F, ad::ADSelector, dummy_x::AbstractVector{<:Real}) where F
+    return _valgrad_func_impl(f, valid_reverse_adtype(ad), dummy_x)
+end
+
+function _valgrad_func_impl(f::F, ad::AbstractADType, dummy_x::AbstractVector{<:Real}) where F
+    float_x = with_floatlike_contents(dummy_x)
+    Tx = typeof(float_x)
+    Ty = _concrete_return_realtype(f, float_x)
+    prep = DI.prepare_gradient(f, ad, float_x)
+    aux = _DIPrep(_borrowable_object(_CacheLikeUse(), prep))
+    f_∇f = _ValGradFunc(aux, ad, f)
+    return _WrappedFunction{Tuple{Ty,Tx},Tx}(f_∇f)
+end
 
 struct _ValGradFunc{P,AD<:AbstractADType,F} <: Function
     aux::P
@@ -164,12 +180,26 @@ end
 
 (f::_ValGradFunc{Nothing})(x::AbstractVector{<:Number}) = with_gradient(f.f, x, f.ad)
 
+function (f_∇f::_ValGradFunc{<:_DIPrep})(x::AbstractVector{<:Number})
+    f = f_∇f.f
+    float_x = with_floatlike_contents(x)
+    prep = f_∇f.aux.prep
+    f_x, δx = @_borrow_maybewrite prep begin
+        DI.value_and_gradient(f, prep, f_∇f.ad, float_x)
+    end
+    return f_x, _oftype(float_x, δx)
+end
+
 
 """
     gradient_func(f, ad::ADSelector)
+    gradient_func(f, ad::ADSelector, dummy_x::AbstractVector{<:Real})
 
 Returns a function `∇f` that calculates the gradient of `f` at a given
 point `x`, so that `∇f(x)` is equivalent to [`only_gradient(f, x, ad)`](@ref).
+
+Passing a `dummy_x` that matches later arguments of `∇f` in type and size
+enables backend-specific preparation. `∇f` is thread-safe either way.
 """
 function gradient_func end
 export gradient_func
@@ -177,7 +207,18 @@ export gradient_func
 gradient_func(f::F, ad::ADSelector) where F = _gradient_func_impl(f, valid_reverse_adtype(ad))
 _gradient_func_impl(f::F, ad::AbstractADType) where F = _GradOnlyFunc(nothing, ad, f)
 
-# ToDo: gradient_func(f, ad::AbstractADType, dummy_x::AbstractVector{<:Number}) with DI prep
+function gradient_func(f::F, ad::ADSelector, dummy_x::AbstractVector{<:Real}) where F
+    return _gradient_func_impl(f, valid_reverse_adtype(ad), dummy_x)
+end
+
+function _gradient_func_impl(f::F, ad::AbstractADType, dummy_x::AbstractVector{<:Real}) where F
+    float_x = with_floatlike_contents(dummy_x)
+    Tx = typeof(float_x)
+    prep = DI.prepare_gradient(f, ad, float_x)
+    aux = _DIPrep(_borrowable_object(_CacheLikeUse(), prep))
+    ∇f = _GradOnlyFunc(aux, ad, f)
+    return _WrappedFunction{Tx,Tx}(∇f)
+end
 
 struct _GradOnlyFunc{P,AD<:AbstractADType,F} <: Function
     aux::P
@@ -190,3 +231,13 @@ function _GradOnlyFunc(aux::P, ad::AD, ::Type{FT}) where {P,AD<:AbstractADType,F
 end
 
 (f::_GradOnlyFunc{Nothing})(x::AbstractVector{<:Number}) = only_gradient(f.f, x, f.ad)
+
+function (∇f::_GradOnlyFunc{<:_DIPrep})(x::AbstractVector{<:Number})
+    f = ∇f.f
+    float_x = with_floatlike_contents(x)
+    prep = ∇f.aux.prep
+    δx = @_borrow_maybewrite prep begin
+        DI.gradient(f, prep, ∇f.ad, float_x)
+    end
+    return _oftype(float_x, δx)
+end
