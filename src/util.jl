@@ -86,7 +86,7 @@ _is_immutable_type(::Type{T}) where T = Val(isbitstype(T))
 struct _WrappedFunction{Ty,Tx} <: Function
     f_fw::FunctionWrapper{Ty,Tuple{Tx}}
 
-    _WrappedFunction{Ty,Tx}(f_fw::FunctionWrapper{Ty,Tx}) where {Ty,Tx} = new{Ty,Tx}(f_fw)
+    _WrappedFunction{Ty,Tx}(f_fw::FunctionWrapper{Ty,Tuple{Tx}}) where {Ty,Tx} = new{Ty,Tx}(f_fw)
     _WrappedFunction{Ty,Tx}(f::F) where {Ty,Tx,F} = new{Ty,Tx}(FunctionWrapper{Ty,Tuple{Tx}}(f))
 end
 
