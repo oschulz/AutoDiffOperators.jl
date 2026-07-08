@@ -43,7 +43,7 @@ function with_jacobian(f::F, x::AbstractVector{T}, ::Type{OP}, ad::ADSelector) w
 end
 
 _maybe_jvp_func(ad_fwd::AbstractADType, f::F, x, ::ADSelector) where F = jvp_func(f, x, ad_fwd)
-_maybe_jvp_func(::NoAutoDiff, f, x, ::Type{AD}) where {AD<:ADSelector} = _NoJVPFunc{AD}()
+_maybe_jvp_func(::NoAutoDiff, f, x, ad::ADSelector) = _NoJVPFunc{typeof(ad)}()
 
 struct _NoJVPFunc{AD<:ADSelector} <: Function end
 function (::_NoJVPFunc{AD})(::AbstractVector{<:Number}) where AD
@@ -51,7 +51,7 @@ function (::_NoJVPFunc{AD})(::AbstractVector{<:Number}) where AD
 end
 
 _maybe_with_vjp_func(ad_rev::AbstractADType, f::F, x, ::ADSelector) where F = with_vjp_func(f, x, ad_rev)
-_maybe_with_vjp_func(::NoAutoDiff, f, x, ::Type{AD}) where {AD<:ADSelector} = f(x), _NoVJPFunc{AD}()
+_maybe_with_vjp_func(::NoAutoDiff, f, x, ad::ADSelector) = f(with_floatlike_contents(x)), _NoVJPFunc{typeof(ad)}()
 
 struct _NoVJPFunc{AD<:ADSelector} <: Function end
 function (::_NoVJPFunc{AD})(::AbstractVector{<:Number}) where AD

@@ -4,6 +4,7 @@ using AutoDiffOperators
 using Test
 
 using LinearAlgebra
+using LinearMaps
 using ADTypes: AutoForwardDiff, AutoFiniteDifferences
 import ForwardDiff, FiniteDifferences
 
@@ -34,4 +35,26 @@ end
     @test @inferred(ADSelector(AutoForwardDiff(), nothing)) isa AutoForwardDiff
     @test @inferred(ADSelector(nothing, AutoForwardDiff())) isa AutoForwardDiff
     @test @inferred(ADSelector(nothing, nothing)) isa NoAutoDiff
+end
+
+
+@testset "reverse-only selector" begin
+    ad = ADSelector(NoAutoDiff(), FiniteDifferences)
+    @test @inferred(forward_adtype(ad)) isa NoAutoDiff
+    @test @inferred(reverse_adtype(ad)) isa AutoFiniteDifferences
+
+    f(X) = diff((x -> x^2).(X))
+    x = rand(Float32, 5)
+    f_x_ref = f(x)
+    J_ref = ForwardDiff.jacobian(f, x)
+    z_l = rand(Float32, 4)
+    z_r = rand(Float32, 5)
+
+    @test_throws ArgumentError jvp_func(f, x, ad)
+    @test_throws ArgumentError with_jvp(f, x, z_r, ad)
+
+    y, J = with_jacobian(f, x, LinearMap, ad)
+    @test y ≈ f_x_ref
+    @test z_l' * J ≈ z_l' * J_ref
+    @test_throws ErrorException J * z_r
 end
