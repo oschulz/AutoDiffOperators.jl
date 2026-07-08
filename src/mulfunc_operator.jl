@@ -8,12 +8,12 @@
     ) where {OP, T<:Real, sym, herm, posdef}
 
 Generates a linear operator object of type `OP` that supports multiplication
-and with (adjoint) vectors based on a multiplication function `ovp` and an
+with (adjoint) vectors based on a multiplication function `ovp` and an
 adjoint multiplication function `vop`.
 
 An operator
 `op = mulfunc_operator(OP, T, sz, ovp, vop, Val(sym), ::Val{herm}, ::Val{posdef})`
-must show show following behavior:
+must show the following behavior:
 
 ```julia
 op isa OP
@@ -23,7 +23,7 @@ op * x_r == ovp(x_r)
 x_l' * op == vop(x_l)
 issymmetric(op) == sym
 ishermitian(op) == herm
-isposdef(op) = posdef
+isposdef(op) == posdef
 ```
 
 where `x_l` and `x_r` are vectors of size `sz[1]` and `sz[2]` respectively.

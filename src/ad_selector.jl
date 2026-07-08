@@ -2,7 +2,7 @@
 
 
 """
-    abstract type AutoDiffOperators.WrappedADSelector 
+    abstract type AutoDiffOperators.WrappedADSelector
 
 Supertype for AD selectors that wrap other AD selectors.
 """
@@ -31,7 +31,7 @@ import ForwardDiff
 
 ADTypes.AutoForwardDiff()
 ADSelector(ForwardDiff)
-convert(ADSelector, ForwardDifsf)
+convert(ADSelector, ForwardDiff)
 ```
 
 all construct an identical `AutoForwardDiff` object.
@@ -102,7 +102,7 @@ _adsel_finitedifferences(::Val) = throw(ErrorException("Package FiniteDifference
 Returns the forward-mode AD backend selector for `ad`.
 
 Returns `ad` itself by default if `ad` supports forward-mode automatic
-differentation, or instance of `ADTypes.NoAutoDiff` if it does not.
+differentiation, or an instance of `ADTypes.NoAutoDiff` if it does not.
 
 May be specialized for some AD selector types, see [`FwdRevADSelector`](@ref),
 for example.
@@ -161,7 +161,7 @@ end
 Returns the reverse-mode AD backend selector for `ad`.
 
 Returns `ad` itself by default if `ad` supports reverse-mode automatic
-differentation, or instance of `ADTypes.NoAutoDiff` if it does not.
+differentiation, or an instance of `ADTypes.NoAutoDiff` if it does not.
 
 May be specialized for some AD selector types, see [`FwdRevADSelector`](@ref),
 for example.

@@ -28,7 +28,7 @@ end
 """
     with_gradient!(f, δx, x::AbstractVector{<:Number}, ad::ADSelector)
 
-Fills `δx` with the the gradient `∇f(x)` of `f` at `x` and returns the tuple
+Fills `δx` with the gradient `∇f(x)` of `f` at `x` and returns the tuple
 `(f(x), δx)`.
 """
 function with_gradient! end
@@ -96,7 +96,7 @@ end
 """
     only_gradient!(f, δx, x::AbstractVector{<:Number}, ad::ADSelector)
 
-Fills δx with the `∇f(x)` of `f` at `x` and returns it.
+Fills `δx` with the gradient `∇f(x)` of `f` at `x` and returns it.
 """
 function only_gradient! end
 export only_gradient!

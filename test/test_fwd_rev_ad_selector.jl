@@ -11,7 +11,7 @@ import ForwardDiff, FiniteDifferences
 include("testutils.jl")
 
 
-@testset "test ForwardDiff" begin
+@testset "test FwdRevADSelector" begin
     structargs = false
     ad = ADSelector(ForwardDiff, FiniteDifferences)
     @test ADSelector(fwd = ForwardDiff, rev = FiniteDifferences) == ad
