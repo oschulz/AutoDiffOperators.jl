@@ -7,7 +7,7 @@ Provides Julia operators that act via automatic differentiation.
 """
 module AutoDiffOperators
 
-using Base.Threads: nthreads, threadid, @threads
+using Base.Threads: nthreads, @threads
 
 using LinearAlgebra
 
