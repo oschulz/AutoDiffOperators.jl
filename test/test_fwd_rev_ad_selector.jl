@@ -62,3 +62,12 @@ end
     @test y ≈ f_x_ref
     @test J_mat ≈ J_ref
 end
+
+
+@testset "operator eltype promotion" begin
+    ad = ADSelector(ForwardDiff)
+    f(X) = diff((x -> x^2).(X))
+    x_int = [1, 2, 3, 4, 5]
+    _, J = with_jacobian(f, x_int, LinearMap, ad)
+    @test eltype(J) == Float64
+end

@@ -32,11 +32,12 @@ function with_jacobian end
 export with_jacobian
 
 
-function with_jacobian(f::F, x::AbstractVector{T}, ::Type{OP}, ad::ADSelector) where {F,T<:Real,OP}
+function with_jacobian(f::F, x::AbstractVector{<:Real}, ::Type{OP}, ad::ADSelector) where {F,OP}
     ad_fwd = forward_adtype(ad)
     ad_rev = reverse_adtype(ad)
     f_jvp = _maybe_jvp_func(ad_fwd, f, x, ad)
     y, f_vjp = _maybe_with_vjp_func(ad_rev, f, x, ad)
+    T = promote_type(float(eltype(x)), float(eltype(y)))
     sz = Dims((size(y,1), size(x,1)))
     J = mulfunc_operator(OP, T, sz, f_jvp, f_vjp, Val(false), Val(false), Val(false))
     return y, J
