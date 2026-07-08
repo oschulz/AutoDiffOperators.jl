@@ -64,9 +64,12 @@ function with_jacobian(f::F, x::AbstractVector{<:Real}, ::Type{<:DenseMatrix}, a
 end
 
 function _with_jacobian_matrix(f::F, x::AbstractVector{<:Real}, ad::ADSelector) where F
-    ad_fwd = valid_forward_adtype(ad)
-    return _with_jacobian_matrix_impl(f, x, ad_fwd)
+    return _with_jacobian_matrix_impl(f, x, _jacobian_matrix_adtype(ad))
 end
+
+_jacobian_matrix_adtype(ad::ADSelector) = _jacobian_matrix_adtype_impl(forward_adtype(ad), ad)
+_jacobian_matrix_adtype_impl(ad_fwd::AbstractADType, ::ADSelector) = ad_fwd
+_jacobian_matrix_adtype_impl(::NoAutoDiff, ad::ADSelector) = valid_reverse_adtype(ad)
 
 function _with_jacobian_matrix_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType) where F
     float_x = with_floatlike_contents(x)

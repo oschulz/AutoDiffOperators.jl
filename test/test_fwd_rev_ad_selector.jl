@@ -57,4 +57,8 @@ end
     @test y ≈ f_x_ref
     @test z_l' * J ≈ z_l' * J_ref
     @test_throws ErrorException J * z_r
+
+    y, J_mat = with_jacobian(f, x, DenseMatrix, ad)
+    @test y ≈ f_x_ref
+    @test J_mat ≈ J_ref
 end
