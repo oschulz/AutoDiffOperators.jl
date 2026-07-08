@@ -160,6 +160,10 @@ end
 
 function _valgrad_func_impl(f::F, ad::AbstractADType, dummy_x::AbstractVector{<:Real}) where F
     float_x = with_floatlike_contents(dummy_x)
+    return _valgrad_func_impl(_traced_array_kind(float_x), f, ad, float_x)
+end
+
+function _valgrad_func_impl(::Nothing, f::F, ad::AbstractADType, float_x::AbstractVector{<:Real}) where F
     Tx = typeof(float_x)
     Ty = _concrete_return_realtype(f, float_x)
     prep = DI.prepare_gradient(f, ad, float_x)
@@ -167,6 +171,8 @@ function _valgrad_func_impl(f::F, ad::AbstractADType, dummy_x::AbstractVector{<:
     f_∇f = _ValGradFunc(aux, ad, f)
     return _WrappedFunction{Tuple{Ty,Tx},Tx}(f_∇f)
 end
+
+_valgrad_func_impl(::Val, f::F, ad::AbstractADType, ::AbstractVector{<:Real}) where F = _ValGradFunc(nothing, ad, f)
 
 struct _ValGradFunc{P,AD<:AbstractADType,F} <: Function
     aux::P
@@ -213,12 +219,18 @@ end
 
 function _gradient_func_impl(f::F, ad::AbstractADType, dummy_x::AbstractVector{<:Real}) where F
     float_x = with_floatlike_contents(dummy_x)
+    return _gradient_func_impl(_traced_array_kind(float_x), f, ad, float_x)
+end
+
+function _gradient_func_impl(::Nothing, f::F, ad::AbstractADType, float_x::AbstractVector{<:Real}) where F
     Tx = typeof(float_x)
     prep = DI.prepare_gradient(f, ad, float_x)
     aux = _DIPrep(_borrowable_object(_CacheLikeUse(), prep))
     ∇f = _GradOnlyFunc(aux, ad, f)
     return _WrappedFunction{Tx,Tx}(∇f)
 end
+
+_gradient_func_impl(::Val, f::F, ad::AbstractADType, ::AbstractVector{<:Real}) where F = _GradOnlyFunc(nothing, ad, f)
 
 struct _GradOnlyFunc{P,AD<:AbstractADType,F} <: Function
     aux::P

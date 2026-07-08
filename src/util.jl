@@ -72,6 +72,13 @@ end
 _is_immutable_type(::Type{T}) where T = Val(isbitstype(T))
 
 
+# Classifies arrays for which backend-specific preparation and function
+# wrappers must not be used: standard CPU arrays yield `nothing` (prepared AD),
+# while traced or device-resident arrays (e.g. Reactant's, via a package
+# extension) yield a `Val` marker selecting the unprepared, wrapper-free AD path:
+_traced_array_kind(::AbstractArray) = nothing
+
+
 
 struct _WrappedFunction{Ty,Tx} <: Function
     f_fw::FunctionWrapper{Ty,Tuple{Tx}}

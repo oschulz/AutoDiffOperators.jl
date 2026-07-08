@@ -135,5 +135,19 @@ function test_adsel_functionality(ad::ADSelector)
         @test @inferred(∇f_prep(x)) isa AbstractVector{<:Number}
         grad_g_x = ∇f_prep(x)
         @test grad_g_x ≈ grad_g_x_ref
+
+        # used for array types that opt out of AD preparation and function
+        # wrappers (e.g. Reactant arrays):
+        @testset "unprepped AD functions" begin
+            if !(ad_fwd isa NoAutoDiff)
+                f_jvp_u = AutoDiffOperators._UnpreppedJVPFunc(valid_forward_adtype(ad), f, x)
+                @test f_jvp_u(J_z_r) ≈ J_f_ref * J_z_r
+            end
+
+            if !(ad_rev isa NoAutoDiff)
+                f_vjp_u = AutoDiffOperators._UnpreppedVJPFunc(valid_reverse_adtype(ad), f, x)
+                @test f_vjp_u(J_z_l) ≈ J_f_ref' * J_z_l
+            end
+        end
     end
 end
