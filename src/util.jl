@@ -31,8 +31,6 @@ function similar_onehot(A::AbstractArray{<:Number}, ::Type{T}, n::Integer, i::In
 end
 
 
-# _copyto!(y, x) = (y === x) ? y : copyto!(y, x)::typeof(y)
-
 _primal_return_type(f::F, ::T) where {F, T} = Core.Compiler.return_type(f, Tuple{T})
 
 function _concrete_return_vector_type(f::F, x::T) where {F, T}
@@ -53,11 +51,6 @@ _self_outer_prod(x::AbstractVector) = x * x'
 _matrix_type(::Type{T},::Type{U}) where {T<:AbstractVector, U<:AbstractVector} = Core.Compiler.return_type(_outer_prod, Tuple{T,U})
 _outer_prod(x::AbstractVector, y::AbstractVector) = x * y'
 
-#function _jacobian_matrix_type(::Type{F},::Type{T}) where {F,T<:AbstractVector}
-#    return Core.Compiler.return_type(_pseudo_jacobian, Tuple{F,T})
-#end
-#_pseudo_jacobian(f, x::AbstractVector) = f(x) * x'
-
 
 _oftype(::T, x::T) where T = x
 _oftype(::T, x::U) where {T,U} = convert(T, x)::T
@@ -68,16 +61,6 @@ function _oftype(::T, x::U) where {T<:AbstractArray,U<:AbstractArray}
     return convert(R, x)::R
 end
 
-
-_oftype!!(::T, x::T) where T = x
-_oftype!!(y::T, x::U) where {T,U} = oftype(y, x)
-
-_oftype!!(::T, x::T) where {T<:AbstractArray} = x
-_oftype!!(y::T, x::U) where {T<:AbstractArray,U<:AbstractArray} = _oftype_array_impl!!(_is_immutable_type(T), y, x)
-# T is immutable:
-_oftype_array_impl!!(::Val{true}, y::T, x::U) where {T<:AbstractArray,U<:AbstractArray} = oftype(y, x)
-# T is mutable:
-_oftype_array_impl!!(::Val{false}, y::T, x::U) where {T<:AbstractArray,U<:AbstractArray} = copyto!(y, x)::T
 
 _is_immutable_type(::Type{T}) where T = Val(isbitstype(T))
 
