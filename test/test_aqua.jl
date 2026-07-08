@@ -3,16 +3,14 @@
 import Test
 import Aqua
 import AutoDiffOperators
-
-Test.@testset "Package ambiguities" begin
-    # Test.@test isempty(Test.detect_ambiguities(AutoDiffOperators))
-end # testset
+using ADTypes: AbstractADType
 
 Test.@testset "Aqua tests" begin
     Aqua.test_all(
         AutoDiffOperators,
-        ambiguities = false,
-        # Piracy detection is triggered incorrectly by `Base.convert(::Type{ADSelector}, m)`:
-        piracies = false
+        # `convert(::Type{ADSelector}, ...)` is benign piracy: `ADSelector` is a
+        # Union that contains the package-owned `WrappedADSelector`, so colliding
+        # method definitions elsewhere would have to reference this package:
+        piracies = (treat_as_own = [AbstractADType],)
     )
 end # testset
