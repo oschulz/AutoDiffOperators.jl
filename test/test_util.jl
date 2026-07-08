@@ -21,6 +21,8 @@ using AutoDiffOperators: _CacheLikePool
     @test handle === nothing
     @test @inferred(_return_borrowed(obj, instance, handle)) isa Nothing
 
+    @test length(_CacheLikePool(A, 3).instances) == 3
+
     value = A
     @test @inferred(_borrowable_object(usage, value)) isa _CacheLikePool{typeof(value)}
     @test @inferred(_borrow_maybewrite(_borrowable_object(usage, value))) isa Tuple{typeof(value), _MaybeWriteIdxHandle}

@@ -140,7 +140,6 @@ struct _CacheLikePool{T}
 end
 
 function _CacheLikePool(value::T, n_max::Int) where {T}
-    n_max = Threads.nthreads()
     instances = Vector{T}(undef, n_max)
     isvalid = BitVector(undef, n_max)
     fill!(isvalid, false)
