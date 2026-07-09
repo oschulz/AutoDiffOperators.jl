@@ -6,10 +6,23 @@
 
 If the elements of `A` are integer-like, convert them using `float`,
 otherwise return `A` unchanged.
+
+The elements must be real-valued numbers, though not necessarily `Real`
+(e.g. tracing- and symbolic-number types), so realness is checked via
+`real(T) === T` instead of dispatch. Complex and other non-real numbers
+are rejected, real-AD conventions would silently give incorrect results
+for them.
 """
 function with_floatlike_contents end
 
-with_floatlike_contents(A::AbstractArray{T}) where {T<:Number} = _with_floatlike_contents_impl(A, float(T))
+with_floatlike_contents(A::AbstractArray{T}) where {T<:Real} = _with_floatlike_contents_impl(A, float(T))
+
+function with_floatlike_contents(A::AbstractArray{T}) where {T<:Number}
+    real(T) === T || throw(ArgumentError(
+        "AutoDiffOperators only supports real-valued numbers, got array eltype $T"
+    ))
+    return _with_floatlike_contents_impl(A, float(T))
+end
 
 _with_floatlike_contents_impl(A::AbstractArray{T}, ::Type{T}) where {T<:Number} = A
 _with_floatlike_contents_impl(A::AbstractArray{T}, ::Type{U}) where {T<:Number,U<:Number} = float.(A)

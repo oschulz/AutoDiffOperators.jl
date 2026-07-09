@@ -14,6 +14,10 @@ Test.@testset "Package AutoDiffOperators" begin
     include("test_zygote.jl")
     include("test_mooncake.jl")
     include("test_enzyme.jl")
+    # Reactant provides prebuilt binaries only for 64-bit Linux and macOS:
+    if Sys.WORD_SIZE == 64 && (Sys.islinux() || Sys.isapple()) && isempty(VERSION.prerelease)
+        include("test_reactant.jl")
+    end
     include("test_fwd_rev_ad_selector.jl")
     include("test_docs.jl")
 end # testset
