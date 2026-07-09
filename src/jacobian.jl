@@ -32,7 +32,7 @@ function with_jacobian end
 export with_jacobian
 
 
-function with_jacobian(f::F, x::AbstractVector{<:Real}, ::Type{OP}, ad::ADSelector) where {F,OP}
+function with_jacobian(f::F, x::AbstractVector{<:Number}, ::Type{OP}, ad::ADSelector) where {F,OP}
     ad_fwd = forward_adtype(ad)
     ad_rev = reverse_adtype(ad)
     f_jvp = _maybe_jvp_func(ad_fwd, f, x, ad)
@@ -60,11 +60,11 @@ function (::_NoVJPFunc{AD})(::AbstractVector{<:Number}) where AD
 end
 
 
-function with_jacobian(f::F, x::AbstractVector{<:Real}, ::Type{<:DenseMatrix}, ad::ADSelector) where F
+function with_jacobian(f::F, x::AbstractVector{<:Number}, ::Type{<:DenseMatrix}, ad::ADSelector) where F
     return _with_jacobian_matrix(f, x, ad)
 end
 
-function _with_jacobian_matrix(f::F, x::AbstractVector{<:Real}, ad::ADSelector) where F
+function _with_jacobian_matrix(f::F, x::AbstractVector{<:Number}, ad::ADSelector) where F
     return _with_jacobian_matrix_impl(f, x, _jacobian_matrix_adtype(ad))
 end
 
@@ -72,7 +72,7 @@ _jacobian_matrix_adtype(ad::ADSelector) = _jacobian_matrix_adtype_impl(forward_a
 _jacobian_matrix_adtype_impl(ad_fwd::AbstractADType, ::ADSelector) = ad_fwd
 _jacobian_matrix_adtype_impl(::NoAutoDiff, ad::ADSelector) = valid_reverse_adtype(ad)
 
-function _with_jacobian_matrix_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType) where F
+function _with_jacobian_matrix_impl(f::F, x::AbstractVector{<:Number}, ad::AbstractADType) where F
     float_x = with_floatlike_contents(x)
     T_x = typeof(float_x)
     T_f_x = _concrete_return_vector_type(f, float_x)
@@ -90,12 +90,12 @@ Returns a tuple `(f(x), J * z)`.
 function with_jvp end
 export with_jvp
 
-function with_jvp(f::F, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ad::ADSelector) where F
+function with_jvp(f::F, x::AbstractVector{<:Number}, z::AbstractVector{<:Number}, ad::ADSelector) where F
     ad_fwd = valid_forward_adtype(ad)
     return _with_jvp_impl(f, x, z, ad_fwd)
 end
 
-function _with_jvp_impl(f::F, x::AbstractVector{<:Real}, z::AbstractVector{<:Real}, ad::AbstractADType) where F
+function _with_jvp_impl(f::F, x::AbstractVector{<:Number}, z::AbstractVector{<:Number}, ad::AbstractADType) where F
     float_x = with_floatlike_contents(x)
     float_z = with_floatlike_contents(z)
     T_z = typeof(float_z)
@@ -117,17 +117,17 @@ Returns a function `jvp` with `jvp(z) == J * z`.
 function jvp_func end
 export jvp_func
 
-function jvp_func(f::F, x::AbstractVector{<:Real}, ad::ADSelector) where F
+function jvp_func(f::F, x::AbstractVector{<:Number}, ad::ADSelector) where F
     ad_fwd = valid_forward_adtype(ad)
     return _jvp_func_impl(f, x, ad_fwd)
 end
 
-function _jvp_func_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType) where F
+function _jvp_func_impl(f::F, x::AbstractVector{<:Number}, ad::AbstractADType) where F
     float_x = with_floatlike_contents(x)
     return _jvp_func_impl(_traced_array_kind(float_x), f, float_x, ad)
 end
 
-function _jvp_func_impl(::Nothing, f::F, float_x::AbstractVector{<:Real}, ad::AbstractADType) where F
+function _jvp_func_impl(::Nothing, f::F, float_x::AbstractVector{<:Number}, ad::AbstractADType) where F
     Tx = typeof(float_x)
     Ty = _concrete_return_vector_type(f, float_x)
     prep = DI.prepare_pushforward_same_point(f, ad, float_x, (float_x,))
@@ -136,7 +136,7 @@ function _jvp_func_impl(::Nothing, f::F, float_x::AbstractVector{<:Real}, ad::Ab
     return _WrappedFunction{Ty,Tx}(f_jvp)
 end
 
-_jvp_func_impl(::Val, f::F, float_x::AbstractVector{<:Real}, ad::AbstractADType) where F = _UnpreppedJVPFunc(ad, f, float_x)
+_jvp_func_impl(::Val, f::F, float_x::AbstractVector{<:Number}, ad::AbstractADType) where F = _UnpreppedJVPFunc(ad, f, float_x)
 
 struct _UnpreppedJVPFunc{AD<:AbstractADType,F,Tx<:AbstractVector{<:Number}} <: Function
     ad::AD
@@ -147,7 +147,7 @@ function _UnpreppedJVPFunc(ad::AD, ::Type{FT}, x::Tx) where {AD<:AbstractADType,
     return _UnpreppedJVPFunc{AD,Type{FT},Tx}(ad, FT, x)
 end
 
-function (f_jvp::_UnpreppedJVPFunc)(z::AbstractVector{<:Real})
+function (f_jvp::_UnpreppedJVPFunc)(z::AbstractVector{<:Number})
     return only(DI.pushforward(f_jvp.f, f_jvp.ad, f_jvp.x, (z,)))
 end
 
@@ -164,7 +164,7 @@ function _JVPFunc(aux::P, ad::AD, ::Type{FT}, x::Tx, ::Type{Ty}) where {P,AD,FT,
     return _JVPFunc{P,AD,Type{FT},Tx,Ty}(aux, ad, FT, x)
 end
 
-function (f_jvp::_JVPFunc{<:_DIPrep,AD,F,Tx,Ty})(z::AbstractVector{<:Real}) where {AD,F,Tx,Ty}
+function (f_jvp::_JVPFunc{<:_DIPrep,AD,F,Tx,Ty})(z::AbstractVector{<:Number}) where {AD,F,Tx,Ty}
     prep = f_jvp.aux.prep
     f = f_jvp.f
     float_x = f_jvp.x
@@ -184,17 +184,17 @@ Returns a tuple `(f(x), vjp)` with the function `vjp(z) ≈ J' * z`.
 function with_vjp_func end
 export with_vjp_func
 
-function with_vjp_func(f::F, x::AbstractVector{<:Real}, ad::ADSelector) where F
+function with_vjp_func(f::F, x::AbstractVector{<:Number}, ad::ADSelector) where F
     ad_rev = reverse_adtype(ad)
     return _with_vjp_func_impl(f, x, ad_rev)
 end
 
-function _with_vjp_func_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType) where F
+function _with_vjp_func_impl(f::F, x::AbstractVector{<:Number}, ad::AbstractADType) where F
     float_x = with_floatlike_contents(x)
     return _with_vjp_func_impl(_traced_array_kind(float_x), f, float_x, ad)
 end
 
-function _with_vjp_func_impl(::Nothing, f::F, float_x::AbstractVector{<:Real}, ad::AbstractADType) where F
+function _with_vjp_func_impl(::Nothing, f::F, float_x::AbstractVector{<:Number}, ad::AbstractADType) where F
     Tx = typeof(float_x)
     f_x = f(float_x)
     Ty = typeof(f_x)
@@ -204,7 +204,7 @@ function _with_vjp_func_impl(::Nothing, f::F, float_x::AbstractVector{<:Real}, a
     return f_x, _WrappedFunction{Tx,Ty}(f_vjp)
 end
 
-_with_vjp_func_impl(::Val, f::F, float_x::AbstractVector{<:Real}, ad::AbstractADType) where F = f(float_x), _UnpreppedVJPFunc(ad, f, float_x)
+_with_vjp_func_impl(::Val, f::F, float_x::AbstractVector{<:Number}, ad::AbstractADType) where F = f(float_x), _UnpreppedVJPFunc(ad, f, float_x)
 
 struct _UnpreppedVJPFunc{AD<:AbstractADType,F,Tx<:AbstractVector{<:Number}} <: Function
     ad::AD
@@ -215,13 +215,13 @@ function _UnpreppedVJPFunc(ad::AD, ::Type{FT}, x::Tx) where {AD<:AbstractADType,
     return _UnpreppedVJPFunc{AD,Type{FT},Tx}(ad, FT, x)
 end
 
-function (f_vjp::_UnpreppedVJPFunc)(z::AbstractVector{<:Real})
+function (f_vjp::_UnpreppedVJPFunc)(z::AbstractVector{<:Number})
     return DI.pullback(f_vjp.f, f_vjp.ad, f_vjp.x, (z,))[1]
 end
 
 # Enzyme's pullback machinery is not compatible with tracing-based array
 # types, compute vjps as gradients of a dot product instead:
-function (f_vjp::_UnpreppedVJPFunc{<:ADTypes.AutoEnzyme})(z::AbstractVector{<:Real})
+function (f_vjp::_UnpreppedVJPFunc{<:ADTypes.AutoEnzyme})(z::AbstractVector{<:Number})
     return DI.gradient(_DotWith(f_vjp.f, z), f_vjp.ad, f_vjp.x)
 end
 
@@ -244,7 +244,7 @@ function _VJPFunc(aux::P, ad::AD, ::Type{FT}, x::Tx, ::Type{Ty}) where {P,AD,FT,
     return _VJPFunc{P,AD,Type{FT},Tx,Ty}(aux, ad, FT, x)
 end
 
-function (f_vjp::_VJPFunc{<:_DIPrep,AD,F,Tx,Ty})(z::AbstractVector{<:Real}) where {AD,F,Tx,Ty}
+function (f_vjp::_VJPFunc{<:_DIPrep,AD,F,Tx,Ty})(z::AbstractVector{<:Number}) where {AD,F,Tx,Ty}
     prep = f_vjp.aux.prep
     f = f_vjp.f
     float_x = f_vjp.x

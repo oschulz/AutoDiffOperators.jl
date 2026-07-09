@@ -12,12 +12,12 @@ variant of this function.
 function with_gradient end
 export with_gradient
 
-function with_gradient(f::F, x::AbstractVector{<:Real}, ad::ADSelector) where F
+function with_gradient(f::F, x::AbstractVector{<:Number}, ad::ADSelector) where F
     ad_rev = valid_reverse_adtype(ad)
     _with_gradient_impl(f, x, ad_rev)
 end
 
-function _with_gradient_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType) where F
+function _with_gradient_impl(f::F, x::AbstractVector{<:Number}, ad::AbstractADType) where F
     float_x = with_floatlike_contents(x)
     T_f_x = _primal_return_type(f, float_x)
     f_x, δx = DI.value_and_gradient(f, ad, float_x)
@@ -34,12 +34,12 @@ Fills `δx` with the gradient `∇f(x)` of `f` at `x` and returns the tuple
 function with_gradient! end
 export with_gradient!
 
-function with_gradient!(f::F, δx::AbstractVector{<:Real}, x::AbstractVector{<:Real}, ad::ADSelector) where F
+function with_gradient!(f::F, δx::AbstractVector{<:Number}, x::AbstractVector{<:Number}, ad::ADSelector) where F
     ad_rev = valid_reverse_adtype(ad)
     _with_gradient_impl!(f, δx, x, ad_rev)
 end
 
-function _with_gradient_impl!(f::F, δx::AbstractVector{<:Real}, x::AbstractVector{<:Real}, ad::AbstractADType) where F
+function _with_gradient_impl!(f::F, δx::AbstractVector{<:Number}, x::AbstractVector{<:Number}, ad::AbstractADType) where F
     float_x = with_floatlike_contents(x)
     T_f_x = _primal_return_type(f, float_x)
     f_x, _ = DI.value_and_gradient!(f, δx, ad, float_x)
@@ -57,16 +57,16 @@ Returns a tuple (f(x), ∇f(x)) with the gradient `∇f(x)` of `f` at `x`.
 function with_gradient!! end
 export with_gradient!!
 
-function with_gradient!!(f::F, δx::AbstractVector{<:Real}, x::AbstractVector{<:Real}, ad::ADSelector) where F
+function with_gradient!!(f::F, δx::AbstractVector{<:Number}, x::AbstractVector{<:Number}, ad::ADSelector) where F
     ad_rev = valid_reverse_adtype(ad)
     return _with_gradient_impl!!(_is_immutable_type(typeof(δx)), f, δx, x, ad_rev)
 end
 
-function _with_gradient_impl!!(::Val{true}, f::F, ::AbstractVector{<:Real}, x::AbstractVector{<:Real}, ad::AbstractADType) where F
+function _with_gradient_impl!!(::Val{true}, f::F, ::AbstractVector{<:Number}, x::AbstractVector{<:Number}, ad::AbstractADType) where F
     return with_gradient(f, x, ad)
 end
 
-function _with_gradient_impl!!(::Val{false}, f::F, δx::AbstractVector{<:Real}, x::AbstractVector{<:Real}, ad::AbstractADType) where F
+function _with_gradient_impl!!(::Val{false}, f::F, δx::AbstractVector{<:Number}, x::AbstractVector{<:Number}, ad::AbstractADType) where F
     return with_gradient!(f, δx, x, ad)
 end
 
@@ -81,12 +81,12 @@ See also [`with_gradient(f, x, ad)`](@ref).
 function only_gradient end
 export only_gradient
 
-function only_gradient(f::F, x::AbstractVector{<:Real}, ad::ADSelector) where F
+function only_gradient(f::F, x::AbstractVector{<:Number}, ad::ADSelector) where F
     ad_rev = valid_reverse_adtype(ad)
     _only_gradient_impl(f, x, ad_rev)
 end
 
-function _only_gradient_impl(f::F, x::AbstractVector{<:Real}, ad::AbstractADType) where F
+function _only_gradient_impl(f::F, x::AbstractVector{<:Number}, ad::AbstractADType) where F
     float_x = with_floatlike_contents(x)
     δx = DI.gradient(f, ad, float_x)
     return _oftype(float_x, δx)
@@ -101,12 +101,12 @@ Fills `δx` with the gradient `∇f(x)` of `f` at `x` and returns it.
 function only_gradient! end
 export only_gradient!
 
-function only_gradient!(f::F, δx::AbstractVector{<:Real}, x::AbstractVector{<:Real}, ad::ADSelector) where F
+function only_gradient!(f::F, δx::AbstractVector{<:Number}, x::AbstractVector{<:Number}, ad::ADSelector) where F
     ad_rev = valid_reverse_adtype(ad)
     _only_gradient_impl!(f, δx, x, ad_rev)
 end
 
-function _only_gradient_impl!(f::F, δx::AbstractVector{<:Real}, x::AbstractVector{<:Real}, ad::AbstractADType) where F
+function _only_gradient_impl!(f::F, δx::AbstractVector{<:Number}, x::AbstractVector{<:Number}, ad::AbstractADType) where F
     float_x = with_floatlike_contents(x)
     DI.gradient!(f, δx, ad, float_x)
     return δx
@@ -123,23 +123,23 @@ Returns the gradient `∇f(x)` of `f` at `x`.
 function only_gradient!! end
 export only_gradient!!
 
-function only_gradient!!(f::F, δx::AbstractVector{<:Real}, x::AbstractVector{<:Real}, ad::ADSelector) where F
+function only_gradient!!(f::F, δx::AbstractVector{<:Number}, x::AbstractVector{<:Number}, ad::ADSelector) where F
     ad_rev = valid_reverse_adtype(ad)
     return _only_gradient_impl!!(_is_immutable_type(typeof(δx)), f, δx, x, ad_rev)
 end
 
-function _only_gradient_impl!!(::Val{true}, f::F, ::AbstractVector{<:Real}, x::AbstractVector{<:Real}, ad::AbstractADType) where F
+function _only_gradient_impl!!(::Val{true}, f::F, ::AbstractVector{<:Number}, x::AbstractVector{<:Number}, ad::AbstractADType) where F
     return only_gradient(f, x, ad)
 end
 
-function _only_gradient_impl!!(::Val{false}, f::F, δx::AbstractVector{<:Real}, x::AbstractVector{<:Real}, ad::AbstractADType) where F
+function _only_gradient_impl!!(::Val{false}, f::F, δx::AbstractVector{<:Number}, x::AbstractVector{<:Number}, ad::AbstractADType) where F
     return only_gradient!(f, δx, x, ad)
 end
 
 
 """
     valgrad_func(f, ad::ADSelector)
-    valgrad_func(f, ad::ADSelector, dummy_x::AbstractVector{<:Real})
+    valgrad_func(f, ad::ADSelector, dummy_x::AbstractVector{<:Number})
 
 Returns a function `f_∇f` that calculates the value and gradient of `f`
 at given points, so that `f_∇f(x)` is equivalent to
@@ -154,16 +154,16 @@ export valgrad_func
 valgrad_func(f::F, ad::ADSelector) where F = _valgrad_func_impl(f, valid_reverse_adtype(ad))
 _valgrad_func_impl(f::F, ad::AbstractADType) where F = _ValGradFunc(nothing, ad, f)
 
-function valgrad_func(f::F, ad::ADSelector, dummy_x::AbstractVector{<:Real}) where F
+function valgrad_func(f::F, ad::ADSelector, dummy_x::AbstractVector{<:Number}) where F
     return _valgrad_func_impl(f, valid_reverse_adtype(ad), dummy_x)
 end
 
-function _valgrad_func_impl(f::F, ad::AbstractADType, dummy_x::AbstractVector{<:Real}) where F
+function _valgrad_func_impl(f::F, ad::AbstractADType, dummy_x::AbstractVector{<:Number}) where F
     float_x = with_floatlike_contents(dummy_x)
     return _valgrad_func_impl(_traced_array_kind(float_x), f, ad, float_x)
 end
 
-function _valgrad_func_impl(::Nothing, f::F, ad::AbstractADType, float_x::AbstractVector{<:Real}) where F
+function _valgrad_func_impl(::Nothing, f::F, ad::AbstractADType, float_x::AbstractVector{<:Number}) where F
     Tx = typeof(float_x)
     Ty = _concrete_return_realtype(f, float_x)
     prep = DI.prepare_gradient(f, ad, float_x)
@@ -172,7 +172,7 @@ function _valgrad_func_impl(::Nothing, f::F, ad::AbstractADType, float_x::Abstra
     return _WrappedFunction{Tuple{Ty,Tx},Tx}(f_∇f)
 end
 
-_valgrad_func_impl(::Val, f::F, ad::AbstractADType, ::AbstractVector{<:Real}) where F = _ValGradFunc(nothing, ad, f)
+_valgrad_func_impl(::Val, f::F, ad::AbstractADType, ::AbstractVector{<:Number}) where F = _ValGradFunc(nothing, ad, f)
 
 struct _ValGradFunc{P,AD<:AbstractADType,F} <: Function
     aux::P
@@ -199,7 +199,7 @@ end
 
 """
     gradient_func(f, ad::ADSelector)
-    gradient_func(f, ad::ADSelector, dummy_x::AbstractVector{<:Real})
+    gradient_func(f, ad::ADSelector, dummy_x::AbstractVector{<:Number})
 
 Returns a function `∇f` that calculates the gradient of `f` at a given
 point `x`, so that `∇f(x)` is equivalent to [`only_gradient(f, x, ad)`](@ref).
@@ -213,16 +213,16 @@ export gradient_func
 gradient_func(f::F, ad::ADSelector) where F = _gradient_func_impl(f, valid_reverse_adtype(ad))
 _gradient_func_impl(f::F, ad::AbstractADType) where F = _GradOnlyFunc(nothing, ad, f)
 
-function gradient_func(f::F, ad::ADSelector, dummy_x::AbstractVector{<:Real}) where F
+function gradient_func(f::F, ad::ADSelector, dummy_x::AbstractVector{<:Number}) where F
     return _gradient_func_impl(f, valid_reverse_adtype(ad), dummy_x)
 end
 
-function _gradient_func_impl(f::F, ad::AbstractADType, dummy_x::AbstractVector{<:Real}) where F
+function _gradient_func_impl(f::F, ad::AbstractADType, dummy_x::AbstractVector{<:Number}) where F
     float_x = with_floatlike_contents(dummy_x)
     return _gradient_func_impl(_traced_array_kind(float_x), f, ad, float_x)
 end
 
-function _gradient_func_impl(::Nothing, f::F, ad::AbstractADType, float_x::AbstractVector{<:Real}) where F
+function _gradient_func_impl(::Nothing, f::F, ad::AbstractADType, float_x::AbstractVector{<:Number}) where F
     Tx = typeof(float_x)
     prep = DI.prepare_gradient(f, ad, float_x)
     aux = _DIPrep(_borrowable_object(_CacheLikeUse(), prep))
@@ -230,7 +230,7 @@ function _gradient_func_impl(::Nothing, f::F, ad::AbstractADType, float_x::Abstr
     return _WrappedFunction{Tx,Tx}(∇f)
 end
 
-_gradient_func_impl(::Val, f::F, ad::AbstractADType, ::AbstractVector{<:Real}) where F = _GradOnlyFunc(nothing, ad, f)
+_gradient_func_impl(::Val, f::F, ad::AbstractADType, ::AbstractVector{<:Number}) where F = _GradOnlyFunc(nothing, ad, f)
 
 struct _GradOnlyFunc{P,AD<:AbstractADType,F} <: Function
     aux::P

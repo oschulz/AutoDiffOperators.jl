@@ -9,10 +9,10 @@ otherwise return `A` unchanged.
 """
 function with_floatlike_contents end
 
-with_floatlike_contents(A::AbstractArray{T}) where {T<:Real} = _with_floatlike_contents_impl(A, float(T))
+with_floatlike_contents(A::AbstractArray{T}) where {T<:Number} = _with_floatlike_contents_impl(A, float(T))
 
-_with_floatlike_contents_impl(A::AbstractArray{T}, ::Type{T}) where {T<:Real} = A
-_with_floatlike_contents_impl(A::AbstractArray{T}, ::Type{U}) where {T<:Real,U<:Real} = float.(A)
+_with_floatlike_contents_impl(A::AbstractArray{T}, ::Type{T}) where {T<:Number} = A
+_with_floatlike_contents_impl(A::AbstractArray{T}, ::Type{U}) where {T<:Number,U<:Number} = float.(A)
 
 
 """
