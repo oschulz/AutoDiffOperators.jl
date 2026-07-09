@@ -220,7 +220,8 @@ function (f_vjp::_UnpreppedVJPFunc)(z::AbstractVector{<:Number})
 end
 
 # Enzyme's pullback machinery is not compatible with tracing-based array
-# types, compute vjps as gradients of a dot product instead:
+# types, compute vjps as gradients of a dot product instead. ToDo: complex
+# inputs would require real(dot(...)) and a conjugation convention here:
 function (f_vjp::_UnpreppedVJPFunc{<:ADTypes.AutoEnzyme})(z::AbstractVector{<:Number})
     return DI.gradient(_DotWith(f_vjp.f, z), f_vjp.ad, f_vjp.x)
 end
