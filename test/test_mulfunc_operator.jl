@@ -5,6 +5,12 @@ using Test
 
 using LinearAlgebra
 
+struct _DiagMulTestFunc{T<:AbstractVector} <: Function
+    d::T
+end
+(m::_DiagMulTestFunc)(x) = m.d .* x
+AutoDiffOperators.supports_batched_mul(::_DiagMulTestFunc) = true
+
 @testset "mulfunc_operator" begin
     A = randn(Float32, 4, 5)
 
@@ -98,6 +104,25 @@ end
     @testset "materialization" begin
         @test @inferred(Matrix(op)) ≈ A
         @test convert(Matrix, op) ≈ A
+    end
+
+    @testset "batched mul support" begin
+        d = randn(Float32, 5)
+        dop_ref = Diagonal(d)
+        dmul = _DiagMulTestFunc(d)
+        @test AutoDiffOperators.supports_batched_mul(dmul)
+        @test !AutoDiffOperators.supports_batched_mul(ovp)
+
+        dop = MulFuncOperator{Float32,true,true,false}(dmul, dmul, (5, 5))
+        @test dop * x_r ≈ dop_ref * x_r
+        @test dop * X_r ≈ dop_ref * X_r
+        @test dop' * X_r ≈ dop_ref' * X_r
+
+        @test AutoDiffOperators.supports_batched_mul((2 * dop).ovp)
+        @test (2 * dop) * X_r ≈ 2 * (dop_ref * X_r)
+        @test AutoDiffOperators.supports_batched_mul((dop' * dop).ovp)
+        @test !AutoDiffOperators.supports_batched_mul((op * dop).ovp)
+        @test (dop' * dop) * X_r ≈ dop_ref' * (dop_ref * X_r)
     end
 
     @testset "traits and trait validation" begin

@@ -61,7 +61,9 @@ The type parameters `sym`, `herm` and `posdef` are `Bool` values that
 declare whether the operator is symmetric, hermitian and positive definite.
 
 The operator supports multiplication and adjoint multiplication with
-vectors and matrices (applied column-wise), scaling with real scalars
+vectors and matrices (applied column-wise, unless the multiplication
+functions declare [`AutoDiffOperators.supports_batched_mul`](@ref)
+support), scaling with real scalars
 (scaling drops a positive-definiteness declaration since the scalar may be
 negative), composition with other `MulFuncOperator`s via `*`,
 materialization via `Matrix(op)` and `LinearAlgebra.mul!`.
@@ -159,11 +161,28 @@ function Base.:(*)(op::MulFuncOperator{T}, X::AbstractMatrix{<:Number}) where T
     size(X, 1) == op.sz[2] || throw(DimensionMismatch(
         "operator of size $(op.sz) can't be multiplied with matrix of size $(size(X))"
     ))
+    supports_batched_mul(op.ovp) && return op.ovp(X)
     size(X, 2) == 0 && return similar(X, promote_type(T, eltype(X)), op.sz[1], 0)
     return _mapcols(op.ovp, X)
 end
 
 _mapcols(f, X::AbstractMatrix) = reduce(hcat, [f(X[:, j]) for j in axes(X, 2)])
+
+"""
+    AutoDiffOperators.supports_batched_mul(f)::Bool
+
+Declares whether a multiplication function `f`, as used by
+[`MulFuncOperator`](@ref) and [`mulfunc_operator`](@ref), can be applied
+to matrices directly, treating the matrix columns as a batch of vectors.
+
+Defaults to `false`, in which case `MulFuncOperator` applies `f`
+column-wise. Specialize it for multiplication function types that handle
+matrix arguments natively (e.g. diagonal operators via broadcasting),
+which can be much more efficient, especially under program tracing.
+"""
+supports_batched_mul(::Any) = false
+
+supports_batched_mul(f::ComposedFunction) = supports_batched_mul(f.outer) && supports_batched_mul(f.inner)
 
 function Base.:(*)(x_l::LinearAlgebra.Adjoint{<:Number,<:AbstractVector{<:Number}}, op::MulFuncOperator)
     return adjoint(adjoint(op) * adjoint(x_l))
@@ -179,6 +198,8 @@ struct _ScaledFunc{S<:Number,F} <: Function
     f::F
 end
 (sf::_ScaledFunc)(x) = sf.s .* sf.f(x)
+
+supports_batched_mul(sf::_ScaledFunc) = supports_batched_mul(sf.f)
 
 function Base.:(*)(s::Number, op::MulFuncOperator{T,sym,herm}) where {T,sym,herm}
     U = promote_type(T, typeof(s))
