@@ -18,9 +18,12 @@ J * z_r ≈ J_explicit * z_r
 z_l' * J ≈ z_l' * J_explicit
 ```
 
-`OP` may be
+`OP` may be [`MulFuncOperator`](@ref), `Matrix`, or (via package
+extensions)
 [`LinearMaps.LinearMap`](https://github.com/JuliaLinearAlgebra/LinearMaps.jl)
-(resp. `LinearMaps.FunctionMap`) or `Matrix`. Other operator types can be
+(resp. `LinearMaps.FunctionMap`) and
+[`SciMLOperators.AbstractSciMLOperator`](https://github.com/SciML/SciMLOperators.jl)
+(resp. `SciMLOperators.FunctionOperator`). Other operator types can be
 supported by specializing
 [`mulfunc_operator`](@ref) for the operator type.
 

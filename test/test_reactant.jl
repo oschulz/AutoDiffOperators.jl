@@ -16,6 +16,10 @@ _rct_grad_call(x) = gradient_func(_rct_f_scalar, ADSelector(Enzyme), x)(x)
 _rct_valgrad_call(x) = valgrad_func(_rct_f_scalar, ADSelector(Enzyme), x)(x)
 _rct_jvp_call(x, z) = jvp_func(_rct_f_vec, x, ADSelector(Enzyme))(z)
 _rct_vjp_call(x, z) = with_vjp_func(_rct_f_vec, x, ADSelector(Enzyme))[2](z)
+_rct_jacop(x) = with_jacobian(_rct_f_vec, x, MulFuncOperator, ADSelector(Enzyme))[2]
+_rct_jacop_mul(x, z) = _rct_jacop(x) * z
+_rct_jacop_adjmul(x, z) = _rct_jacop(x)' * z
+_rct_jacop_matmul(x, Z) = _rct_jacop(x) * Z
 
 Test.@testset "test_reactant" begin
     x = randn(8)
@@ -38,4 +42,16 @@ Test.@testset "test_reactant" begin
 
     vjp_compiled = Reactant.@compile _rct_vjp_call(xr, zr)
     @test Array(vjp_compiled(xr, zr)) ≈ J_ref' * z
+
+    Z = randn(8, 3)
+    Zr = Reactant.to_rarray(Z)
+
+    jacop_mul_compiled = Reactant.@compile _rct_jacop_mul(xr, zr)
+    @test Array(jacop_mul_compiled(xr, zr)) ≈ J_ref * z
+
+    jacop_adjmul_compiled = Reactant.@compile _rct_jacop_adjmul(xr, zr)
+    @test Array(jacop_adjmul_compiled(xr, zr)) ≈ J_ref' * z
+
+    jacop_matmul_compiled = Reactant.@compile _rct_jacop_matmul(xr, Zr)
+    @test Array(jacop_matmul_compiled(xr, Zr)) ≈ J_ref * Z
 end
