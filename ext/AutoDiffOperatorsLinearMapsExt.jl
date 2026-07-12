@@ -21,4 +21,25 @@ function AutoDiffOperators.mulfunc_operator(
 end
 
 
+function LinearMaps.FunctionMap{T}(op::AutoDiffOperators.MulFuncOperator{T}) where T
+    FunctionMap{T,false}(
+        op.ovp, op.vop, size(op)...;
+        isposdef=isposdef(op), issymmetric=issymmetric(op), ishermitian=ishermitian(op)
+    )
+end
+
+LinearMaps.FunctionMap(op::AutoDiffOperators.MulFuncOperator{T}) where T = LinearMaps.FunctionMap{T}(op)
+
+LinearMaps.LinearMap{T}(op::AutoDiffOperators.MulFuncOperator{T}) where T = LinearMaps.FunctionMap{T}(op)
+LinearMaps.LinearMap(op::AutoDiffOperators.MulFuncOperator{T}) where T = LinearMaps.LinearMap{T}(op)
+
+Base.convert(::Type{LinearMaps.FunctionMap{T}}, op::AutoDiffOperators.MulFuncOperator{T}) where T = LinearMaps.FunctionMap{T}(op)
+Base.convert(::Type{LinearMaps.FunctionMap}, op::AutoDiffOperators.MulFuncOperator) = LinearMaps.FunctionMap(op)
+Base.convert(::Type{LinearMaps.LinearMap{T}}, op::AutoDiffOperators.MulFuncOperator{T}) where T = LinearMaps.LinearMap{T}(op)
+Base.convert(::Type{LinearMaps.LinearMap}, op::AutoDiffOperators.MulFuncOperator) = LinearMaps.LinearMap(op)
+
+Base.:(*)(A::LinearMaps.LinearMap{<:Number}, B::AutoDiffOperators.MulFuncOperator) = A * LinearMaps.LinearMap(B)
+Base.:(*)(A::AutoDiffOperators.MulFuncOperator, B::LinearMaps.LinearMap{<:Number}) = LinearMaps.LinearMap(A) * B
+
+
 end # module AutoDiffOperatorsLinearMapsExt

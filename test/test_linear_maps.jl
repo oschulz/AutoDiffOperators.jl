@@ -22,4 +22,23 @@ using LinearAlgebra
         @test @inferred(op * x_r) == A * x_r
         @test @inferred(op' * x_l) == A' * x_l
     end
+
+    @testset "MulFuncOperator conversion" begin
+        mfop = MulFuncOperator{T,false,false,false}(jvp, vjp, sz)
+
+        for lm in [
+            LinearMap(mfop), LinearMap{T}(mfop), FunctionMap(mfop), FunctionMap{T}(mfop),
+            convert(LinearMap, mfop), convert(LinearMap{T}, mfop),
+            convert(FunctionMap, mfop), convert(FunctionMap{T}, mfop)
+        ]
+            @test lm isa FunctionMap{T}
+            @test lm * x_r == A * x_r
+            @test lm' * x_l == A' * x_l
+        end
+
+        B = LinearMap(randn(Float32, 5, 4))
+        @test Matrix(mfop * B) ≈ A * Matrix(B)
+        C = LinearMap(randn(Float32, 3, 4))
+        @test Matrix(C * mfop) ≈ Matrix(C) * A
+    end
 end
