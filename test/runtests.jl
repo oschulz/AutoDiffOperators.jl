@@ -8,6 +8,7 @@ Test.@testset "Package AutoDiffOperators" begin
     include("test_traced_arrays.jl")
     include("test_mulfunc_operator.jl")
     include("test_linear_maps.jl")
+    include("test_sciml_operators.jl")
     include("test_adselector.jl")
     include("test_finitedifferences.jl")
     include("test_forwarddiff.jl")
