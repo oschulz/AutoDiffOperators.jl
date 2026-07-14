@@ -91,11 +91,27 @@ end
 
     @testset "composition" begin
         cop = @inferred(op' * op)
-        @test cop isa MatrixFreeOperator{Float32}
+        @test cop isa MatrixShapedProduct{Float32}
+        @test cop.factors == (op', op)
         @test size(cop) == (5, 5)
         @test cop * x_r ≈ A' * (A * x_r)
+        @test cop * X_r ≈ A' * (A * X_r)
         @test cop' * x_r ≈ A' * (A * x_r)
+        @test cop' == cop'
+        @test Matrix(cop) ≈ A' * A
+        @test (cop * op') isa MatrixShapedProduct
+        @test (cop * op').factors == (op', op, op')
+        @test (op * cop).factors == (op, op', op)
+        @test (cop * cop).factors == (op', op, op', op)
+        @test occursin("MatrixShapedProduct", sprint(show, cop))
         @test_throws DimensionMismatch op * op
+
+        Ms = [randn(Float32, 5, 5) for _ in 1:10]
+        pv = AutoDiffOperators.MatrixShapedProduct(map(Base.Fix1(*, 0.5f0) ∘ LinearAlgebra.Symmetric, Ms))
+        @test pv isa MatrixShapedProduct{Float32,<:AbstractVector}
+        pv_ref = foldl(*, map(M -> 0.5f0 * LinearAlgebra.Symmetric(M), Ms))
+        @test pv * x_r[1:5] ≈ pv_ref * x_r[1:5]
+        @test (pv * cop).factors isa AbstractVector
     end
 
     @testset "mul!" begin
@@ -133,9 +149,6 @@ end
 
         @test AutoDiffOperators.supports_batched_mul((2 * dop).ovp)
         @test (2 * dop) * X_r ≈ 2 * (dop_ref * X_r)
-        @test AutoDiffOperators.supports_batched_mul((dop' * dop).ovp)
-        nb_op = MatrixFreeOperator{Float32,false,false,false}(x -> A * x, x -> A' * x, size(A))
-        @test !AutoDiffOperators.supports_batched_mul((nb_op * dop).ovp)
         @test (dop' * dop) * X_r ≈ dop_ref' * (dop_ref * X_r)
     end
 
@@ -179,7 +192,173 @@ end
     @test sop' * x_l ≈ 3 * (A' * x_l)
 
     cop = op' * op
-    @test cop isa MatrixFreeOperator{Float32}
+    @test cop isa MatrixShapedProduct{Float32}
     @test cop * x_r ≈ A' * (A * x_r)
     @test cop * X_r ≈ A' * (A * X_r)
+end
+
+@testset "RowGramOperator" begin
+    A = randn(Float32, 4, 6)
+    G_ref = A * A'
+    x = randn(Float32, 4)
+    X = randn(Float32, 4, 3)
+
+    for factor in [A, _WrappedMatrixTestOp(A)]
+        g = @inferred(RowGramOperator(factor))
+        @test g isa RowGramOperator{Float32}
+        @test gram_factor(g) === factor
+        @test @inferred(size(g)) == (4, 4)
+        @test issymmetric(g) && ishermitian(g) && isposdef(g)
+        @test g' === g
+        @test @inferred(g * x) ≈ G_ref * x
+        @test g * X ≈ G_ref * X
+        @test Matrix(g) ≈ G_ref
+    end
+
+    # column-Gram via the adjoint factor:
+    W = randn(Float32, 4, 6)
+    gc = RowGramOperator(_WrappedMatrixTestOp(W)')
+    @test gc * randn(Float32, 6) isa AbstractVector{Float32}
+    @test Matrix(gc) ≈ W' * W
+
+    @test occursin("RowGramOperator", sprint(show, RowGramOperator(A)))
+    @test RowGramOperator(A) == RowGramOperator(A)
+    @test_throws ArgumentError RowGramOperator(randn(ComplexF64, 3, 3))
+end
+
+@testset "MatrixShapedSum" begin
+    A = randn(Float32, 5, 5)
+    B = randn(Float32, 5, 5)
+    op_a = _WrappedMatrixTestOp(A)
+    op_b = _WrappedMatrixTestOp(B)
+    x = randn(Float32, 5)
+    X = randn(Float32, 5, 3)
+
+    u = UniformScalingOperator(2.0f0, 5)
+    @test u isa MatrixShapedOperator{Float32}
+    @test size(u) == (5, 5)
+    @test u * x ≈ 2 * x
+    @test u * X ≈ 2 * X
+    @test u' === u
+    @test issymmetric(u) && ishermitian(u) && isposdef(u)
+    @test !isposdef(UniformScalingOperator(-1.0f0, 5))
+    @test Matrix(u) ≈ 2 * I(5)
+
+    s = op_a + op_b
+    @test s isa MatrixShapedSum{Float32}
+    @test size(s) == (5, 5)
+    @test s * x ≈ (A + B) * x
+    @test s * X ≈ (A + B) * X
+    @test Matrix(s) ≈ A + B
+
+    si = op_a + op_b + I
+    @test si isa MatrixShapedSum
+    @test si.terms[3] isa UniformScalingOperator
+    @test si * x ≈ (A + B + I) * x
+    @test Matrix(I + op_a) ≈ A + I
+    @test Matrix(op_a + 2 * I) ≈ A + 2 * I
+    @test Matrix((op_a + I) + (op_b + 2 * I)) ≈ A + B + 3 * I
+    @test Matrix((op_a + I) + op_b) ≈ A + B + I
+    @test Matrix(op_a + (op_b + I)) ≈ A + B + I
+
+    @test s' * x ≈ (A + B)' * x
+    @test Matrix(si') ≈ (A + B + I)'
+
+    g = RowGramOperator(randn(Float32, 5, 7))
+    m = g + I
+    @test issymmetric(m) && ishermitian(m) && isposdef(m)
+    @test Matrix(m) ≈ Matrix(g) + I
+    @test !issymmetric(op_a + op_b) || issymmetric(A) && issymmetric(B)
+
+    @test_throws DimensionMismatch op_a + _WrappedMatrixTestOp(randn(Float32, 3, 3))
+    @test occursin("MatrixShapedSum", sprint(show, s))
+
+    @testset "vector terms" begin
+        Ms = [randn(Float32, 5, 5) for _ in 1:20]
+        ops = map(_WrappedMatrixTestOp, Ms)
+        sv = MatrixShapedSum(ops)
+        @test sv isa MatrixShapedSum{Float32,<:AbstractVector}
+        @test sv * x ≈ sum(Ms) * x
+        @test sv * X ≈ sum(Ms) * X
+        @test Matrix(sv') ≈ sum(Ms)'
+        @test issymmetric(sv) == all(issymmetric, Ms)
+
+        svi = sv + I
+        @test svi isa MatrixShapedSum{Float32,<:AbstractVector}
+        @test length(svi.terms) == 21
+        @test svi * x ≈ (sum(Ms) + I) * x
+        @test (op_a + sv).terms isa AbstractVector
+        @test Matrix(op_a + sv) ≈ A + sum(Ms)
+        @test Matrix(sv + sv) ≈ 2 * sum(Ms)
+    end
+end
+
+@testset "diagonal_operator and blockdiag_operator" begin
+    d1 = randn(Float32, 4)
+    d2 = randn(Float32, 3)
+    x4 = randn(Float32, 4)
+    X4 = randn(Float32, 4, 3)
+
+    dop = @inferred(diagonal_operator(d1))
+    @test dop isa MatrixFreeOperator{Float32,true,true,false}
+    @test size(dop) == (4, 4)
+    @test dop * x4 ≈ Diagonal(d1) * x4
+    @test dop * X4 ≈ Diagonal(d1) * X4
+    @test dop' * x4 ≈ Diagonal(d1) * x4
+    @test AutoDiffOperators.supports_batched_mul(dop.ovp)
+
+    # all-diagonal blocks collapse to a single diagonal operator:
+    bd = blockdiag_operator(diagonal_operator(d1), diagonal_operator(d2))
+    @test bd isa AutoDiffOperators.MatrixShapedOperators._DiagonalMFOperator
+    @test Matrix(bd) ≈ Matrix(Diagonal(vcat(d1, d2)))
+
+    # generic blocks (mixed operators and matrices, non-square):
+    A = randn(Float32, 2, 4)
+    B = randn(Float32, 3, 3)
+    bd2 = blockdiag_operator(_WrappedMatrixTestOp(A), B, diagonal_operator(d2))
+    ref = zeros(Float32, 2 + 3 + 3, 4 + 3 + 3)
+    ref[1:2, 1:4] = A
+    ref[3:5, 5:7] = B
+    ref[6:8, 8:10] = Matrix(Diagonal(d2))
+    @test size(bd2) == size(ref)
+    z = randn(Float32, size(ref, 2))
+    Z = randn(Float32, size(ref, 2), 3)
+    @test bd2 * z ≈ ref * z
+    @test bd2 * Z ≈ ref * Z
+    @test bd2' * randn(Float32, size(ref, 1)) isa AbstractVector{Float32}
+    @test Matrix(bd2) ≈ ref
+    @test Matrix(bd2') ≈ ref'
+
+    # row-Gram blocks combine into a row-Gram of block-diagonal factors:
+    g1 = RowGramOperator(randn(Float32, 3, 5))
+    g2 = RowGramOperator(diagonal_operator(d2))
+    gbd = blockdiag_operator(g1, g2)
+    @test gbd isa RowGramOperator
+    @test Matrix(gbd) ≈ [Matrix(g1) zeros(Float32, 3, 3); zeros(Float32, 3, 3) Matrix(g2)]
+
+    # single-block cases:
+    @test blockdiag_operator(dop) === dop
+    @test blockdiag_operator(g1) === g1
+    @test Matrix(blockdiag_operator(B)) ≈ B
+
+    @testset "vector blocks" begin
+        ds = [randn(Float32, 3) for _ in 1:30]
+        bdv = blockdiag_operator(map(diagonal_operator, ds))
+        @test bdv isa AutoDiffOperators.MatrixShapedOperators._DiagonalMFOperator
+        @test Matrix(bdv) ≈ Matrix(Diagonal(reduce(vcat, ds)))
+
+        Bs = [randn(Float32, 2, 3) for _ in 1:10]
+        bdg = blockdiag_operator(map(_WrappedMatrixTestOp, Bs))
+        @test size(bdg) == (20, 30)
+        zz = randn(Float32, 30)
+        ref = cat(Bs...; dims = (1, 2))
+        @test bdg * zz ≈ ref * zz
+        @test bdg * randn(Float32, 30, 4) isa AbstractMatrix{Float32}
+        @test Matrix(bdg') ≈ ref'
+
+        gs = [RowGramOperator(randn(Float32, 3, 4)) for _ in 1:5]
+        gbdv = blockdiag_operator(gs)
+        @test gbdv isa RowGramOperator
+        @test Matrix(gbdv) ≈ cat(map(Matrix, gs)...; dims = (1, 2))
+    end
 end

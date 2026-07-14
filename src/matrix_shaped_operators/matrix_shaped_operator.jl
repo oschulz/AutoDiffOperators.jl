@@ -22,9 +22,9 @@ necessarily `Real` (e.g. tracing-number types), realness is checked via
 `real(T) === T`.
 
 `Base.transpose`, multiplication with adjoint/transposed vectors, scalar
-scaling, operator composition via `*`, operator superposition via `+`
-(see [`SuperposedOperator`](@ref)), `LinearAlgebra.mul!` and
-materialization via `Base.Matrix` are provided generically.
+scaling, operator sums via `+` (see [`MatrixShapedSum`](@ref)), operator
+products via `*` (see [`MatrixShapedProduct`](@ref)), `LinearAlgebra.mul!`
+and materialization via `Base.Matrix` are provided generically.
 """
 abstract type MatrixShapedOperator{T<:Number} end
 export MatrixShapedOperator

@@ -37,8 +37,14 @@ function SciMLOperators.FunctionOperator(op::AutoDiffOperators.MatrixFreeOperato
     )
 end
 
+function SciMLOperators.FunctionOperator(op::AutoDiffOperators.MatrixShapedOperator{T}) where T
+    AutoDiffOperators.mulfunc_operator(
+        SciMLOperators.AbstractSciMLOperator, T, size(op), Base.Fix1(*, op), Base.Fix1(*, adjoint(op)),
+        Val(issymmetric(op)), Val(ishermitian(op)), Val(isposdef(op))
+    )
+end
 
-Base.convert(::Type{SciMLOperators.AbstractSciMLOperator}, op::AutoDiffOperators.MatrixFreeOperator) = SciMLOperators.FunctionOperator(op)
+Base.convert(::Type{SciMLOperators.AbstractSciMLOperator}, op::AutoDiffOperators.MatrixShapedOperator) = SciMLOperators.FunctionOperator(op)
 
 
 end # module AutoDiffOperatorsSciMLOperatorsExt

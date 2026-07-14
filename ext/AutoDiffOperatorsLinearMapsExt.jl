@@ -28,19 +28,25 @@ function LinearMaps.FunctionMap{T}(op::AutoDiffOperators.MatrixFreeOperator{T}) 
     )
 end
 
+function LinearMaps.FunctionMap{T}(op::AutoDiffOperators.MatrixShapedOperator{T}) where T
+    FunctionMap{T,false}(
+        Base.Fix1(*, op), Base.Fix1(*, adjoint(op)), size(op)...;
+        isposdef=isposdef(op), issymmetric=issymmetric(op), ishermitian=ishermitian(op)
+    )
+end
 
-LinearMaps.FunctionMap(op::AutoDiffOperators.MatrixFreeOperator{T}) where T = LinearMaps.FunctionMap{T}(op)
+LinearMaps.FunctionMap(op::AutoDiffOperators.MatrixShapedOperator{T}) where T = LinearMaps.FunctionMap{T}(op)
 
-LinearMaps.LinearMap{T}(op::AutoDiffOperators.MatrixFreeOperator{T}) where T = LinearMaps.FunctionMap{T}(op)
-LinearMaps.LinearMap(op::AutoDiffOperators.MatrixFreeOperator{T}) where T = LinearMaps.LinearMap{T}(op)
+LinearMaps.LinearMap{T}(op::AutoDiffOperators.MatrixShapedOperator{T}) where T = LinearMaps.FunctionMap{T}(op)
+LinearMaps.LinearMap(op::AutoDiffOperators.MatrixShapedOperator{T}) where T = LinearMaps.LinearMap{T}(op)
 
-Base.convert(::Type{LinearMaps.FunctionMap{T}}, op::AutoDiffOperators.MatrixFreeOperator{T}) where T = LinearMaps.FunctionMap{T}(op)
-Base.convert(::Type{LinearMaps.FunctionMap}, op::AutoDiffOperators.MatrixFreeOperator) = LinearMaps.FunctionMap(op)
-Base.convert(::Type{LinearMaps.LinearMap{T}}, op::AutoDiffOperators.MatrixFreeOperator{T}) where T = LinearMaps.LinearMap{T}(op)
-Base.convert(::Type{LinearMaps.LinearMap}, op::AutoDiffOperators.MatrixFreeOperator) = LinearMaps.LinearMap(op)
+Base.convert(::Type{LinearMaps.FunctionMap{T}}, op::AutoDiffOperators.MatrixShapedOperator{T}) where T = LinearMaps.FunctionMap{T}(op)
+Base.convert(::Type{LinearMaps.FunctionMap}, op::AutoDiffOperators.MatrixShapedOperator) = LinearMaps.FunctionMap(op)
+Base.convert(::Type{LinearMaps.LinearMap{T}}, op::AutoDiffOperators.MatrixShapedOperator{T}) where T = LinearMaps.LinearMap{T}(op)
+Base.convert(::Type{LinearMaps.LinearMap}, op::AutoDiffOperators.MatrixShapedOperator) = LinearMaps.LinearMap(op)
 
-Base.:(*)(A::LinearMaps.LinearMap{<:Number}, B::AutoDiffOperators.MatrixFreeOperator) = A * LinearMaps.LinearMap(B)
-Base.:(*)(A::AutoDiffOperators.MatrixFreeOperator, B::LinearMaps.LinearMap{<:Number}) = LinearMaps.LinearMap(A) * B
+Base.:(*)(A::LinearMaps.LinearMap{<:Number}, B::AutoDiffOperators.MatrixShapedOperator) = A * LinearMaps.LinearMap(B)
+Base.:(*)(A::AutoDiffOperators.MatrixShapedOperator, B::LinearMaps.LinearMap{<:Number}) = LinearMaps.LinearMap(A) * B
 
 
 end # module AutoDiffOperatorsLinearMapsExt

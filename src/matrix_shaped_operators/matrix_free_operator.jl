@@ -200,22 +200,3 @@ function Base.:(*)(s::Number, op::MatrixShapedOperator{T}) where T
 end
 
 Base.:(*)(op::MatrixShapedOperator, s::Number) = s * op
-
-function Base.:(*)(a::MatrixFreeOperator{T}, b::MatrixFreeOperator{U}) where {T,U}
-    a.sz[2] == b.sz[1] || throw(DimensionMismatch(
-        "operator of size $(a.sz) can't be composed with operator of size $(b.sz)"
-    ))
-    MatrixFreeOperator{promote_type(T,U),false,false,false}(
-        a.ovp ∘ b.ovp, b.vop ∘ a.vop, (a.sz[1], b.sz[2])
-    )
-end
-
-function Base.:(*)(a::MatrixShapedOperator{T}, b::MatrixShapedOperator{U}) where {T,U}
-    size(a, 2) == size(b, 1) || throw(DimensionMismatch(
-        "operator of size $(size(a)) can't be composed with operator of size $(size(b))"
-    ))
-    MatrixFreeOperator{promote_type(T,U),false,false,false}(
-        Base.Fix1(*, a) ∘ Base.Fix1(*, b), Base.Fix1(*, adjoint(b)) ∘ Base.Fix1(*, adjoint(a)),
-        (size(a, 1), size(b, 2))
-    )
-end

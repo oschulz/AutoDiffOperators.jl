@@ -23,7 +23,9 @@ include("matrix_shaped_operators/MatrixShapedOperators.jl")
 
 using .MatrixShapedOperators
 using .MatrixShapedOperators: mulfunc_operator, supports_batched_mul, similar_onehot
-export MatrixShapedOperator, MatrixFreeOperator
+export MatrixShapedOperator, MatrixFreeOperator, RowGramOperator, gram_factor,
+    MatrixShapedSum, MatrixShapedProduct, UniformScalingOperator,
+    diagonal_operator, blockdiag_operator
 
 include("ad_selector.jl")
 include("jacobian.jl")
