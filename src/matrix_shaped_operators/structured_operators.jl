@@ -4,19 +4,14 @@
 """
     diagonal_operator(d::AbstractVector{<:Number})
 
-Returns a [`MatrixFreeOperator`](@ref) that represents and directly
-applies `LinearAlgebra.Diagonal(d)`, so that specializations for
-`Diagonal` (e.g. on GPU or under program tracing) take effect.
+Returns a [`WrappedMatrixOperator`](@ref) around
+`LinearAlgebra.Diagonal(d)`, so that specializations for `Diagonal`
+(e.g. on GPU or under program tracing) take effect.
 """
-function diagonal_operator(d::AbstractVector{T}) where {T<:Number}
-    n = size(d, 1)
-    dmul = Base.Fix1(*, Diagonal(d))
-    return MatrixFreeOperator{T,true,true,false}(dmul, dmul, (n, n))
-end
+diagonal_operator(d::AbstractVector{<:Number}) = WrappedMatrixOperator(Diagonal(d))
 export diagonal_operator
 
-const _DiagMulFunc = Base.Fix1{typeof(*),<:Diagonal}
-const _DiagonalMFOperator{T} = MatrixFreeOperator{T,true,true,false,<:_DiagMulFunc,<:_DiagMulFunc}
+const _DiagonalWrappedOperator{T} = WrappedMatrixOperator{T,<:Diagonal}
 
 
 struct _BlockDiagMul{FS,RS} <: Function
@@ -31,7 +26,7 @@ end
 _sel_rows(x::AbstractVector, r::AbstractUnitRange) = x[r]
 _sel_rows(X::AbstractMatrix, r::AbstractUnitRange) = X[r, :]
 
-# The blocks are applied via `Base.Fix1(*, block)`, which accepts matrix
+# The blocks are applied as matrix-shaped operators, which accept matrix
 # arguments natively:
 supports_batched_mul(::_BlockDiagMul) = true
 
@@ -46,11 +41,7 @@ function _block_ranges(lens::AbstractVector{<:Integer})
     return map((l, b) -> (b - l + 1):b, lens, stops)
 end
 
-_as_operator(op::MatrixShapedOperator) = op
 
-function _as_operator(A::AbstractMatrix{T}) where {T<:Number}
-    MatrixFreeOperator{T,false,false,false}(Base.Fix1(*, A), Base.Fix1(*, adjoint(A)), size(A))
-end
 
 """
     blockdiag_operator(blocks...)
@@ -70,22 +61,22 @@ export blockdiag_operator
 
 const _BlockLike = Union{MatrixShapedOperator,AbstractMatrix{<:Number}}
 
-blockdiag_operator(b1::_BlockLike) = _as_operator(b1)
+blockdiag_operator(b1::_BlockLike) = asoperator(b1)
 
 function blockdiag_operator(b1::_BlockLike, bs::Vararg{_BlockLike,N}) where N
     blocks = (b1, bs...)
     ms = map(b -> size(b, 1), blocks)
     ns = map(b -> size(b, 2), blocks)
     T = promote_type(map(eltype, blocks)...)
-    fwd = _BlockDiagMul(map(b -> Base.Fix1(*, b), blocks), _block_ranges(ns))
-    adj = _BlockDiagMul(map(b -> Base.Fix1(*, adjoint(b)), blocks), _block_ranges(ms))
+    fwd = _BlockDiagMul(map(asoperator, blocks), _block_ranges(ns))
+    adj = _BlockDiagMul(map(b -> adjoint(asoperator(b)), blocks), _block_ranges(ms))
     return MatrixFreeOperator{T,false,false,false}(fwd, adj, (sum(ms), sum(ns)))
 end
 
-blockdiag_operator(b1::_DiagonalMFOperator) = b1
+blockdiag_operator(b1::_DiagonalWrappedOperator) = b1
 
-function blockdiag_operator(b1::_DiagonalMFOperator, bs::Vararg{_DiagonalMFOperator,N}) where N
-    return diagonal_operator(vcat(b1.ovp.x.diag, map(b -> b.ovp.x.diag, bs)...))
+function blockdiag_operator(b1::_DiagonalWrappedOperator, bs::Vararg{_DiagonalWrappedOperator,N}) where N
+    return diagonal_operator(vcat(parent(b1).diag, map(b -> parent(b).diag, bs)...))
 end
 
 blockdiag_operator(b1::RowGramOperator) = b1
@@ -97,18 +88,18 @@ end
 
 function blockdiag_operator(blocks::AbstractVector{<:_BlockLike})
     isempty(blocks) && throw(ArgumentError("blockdiag_operator requires at least one block"))
-    length(blocks) == 1 && return _as_operator(only(blocks))
+    length(blocks) == 1 && return asoperator(only(blocks))
     ms = map(b -> size(b, 1), blocks)
     ns = map(b -> size(b, 2), blocks)
     T = mapreduce(eltype, promote_type, blocks)
-    fwd = _BlockDiagMul(map(b -> Base.Fix1(*, b), blocks), _block_ranges(ns))
-    adj = _BlockDiagMul(map(b -> Base.Fix1(*, adjoint(b)), blocks), _block_ranges(ms))
+    fwd = _BlockDiagMul(map(asoperator, blocks), _block_ranges(ns))
+    adj = _BlockDiagMul(map(b -> adjoint(asoperator(b)), blocks), _block_ranges(ms))
     return MatrixFreeOperator{T,false,false,false}(fwd, adj, (sum(ms), sum(ns)))
 end
 
-function blockdiag_operator(blocks::AbstractVector{<:_DiagonalMFOperator})
+function blockdiag_operator(blocks::AbstractVector{<:_DiagonalWrappedOperator})
     isempty(blocks) && throw(ArgumentError("blockdiag_operator requires at least one block"))
-    return diagonal_operator(reduce(vcat, map(b -> b.ovp.x.diag, blocks)))
+    return diagonal_operator(reduce(vcat, map(b -> parent(b).diag, blocks)))
 end
 
 function blockdiag_operator(blocks::AbstractVector{<:RowGramOperator})

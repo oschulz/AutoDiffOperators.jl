@@ -5,7 +5,24 @@
     abstract type MatrixShapedOperator{T<:Number}
 
 Abstract supertype for linear operators with matrix shape and semantics
-that are accessed only through multiplication and adjoint multiplication.
+that are accessed only through application and operator algebra, not
+through element access.
+
+Operators are applied to vectors, and column-wise to matrices treated as
+batches of vectors, using function-call syntax:
+
+```julia
+y = op(x)   # apply to a vector
+Y = op(X)   # apply to the columns of a matrix
+```
+
+`Base.:(*)` and `Base.:(+)` implement lazy operator algebra:
+multiplication and addition of operators with each other and with
+`AbstractMatrix` values (which get wrapped via
+[`WrappedMatrixOperator`](@ref)) result in [`MatrixShapedProduct`](@ref)
+resp. [`MatrixShapedSum`](@ref) operators. Multiplication with plain and
+adjoint/transposed *vectors* applies the operator directly, `op * x` is
+equivalent to `op(x)` for a vector `x`.
 
 Subtypes must implement:
 
@@ -16,18 +33,16 @@ Subtypes must implement:
 * `LinearAlgebra.ishermitian(op::SomeOperator)`
 * `LinearAlgebra.isposdef(op::SomeOperator)`
 
-and may specialize [`mul_impl`](@ref) for multiplication with matrices,
-which is column-wise by default. `Base.:(*)` and `Base.:(+)` themselves
-are only defined for `MatrixShapedOperator` and dispatch to
-[`mul_impl`](@ref) and [`add_impl`](@ref) after argument checking, to
-keep the method footprint on `Base` operators small. Element types must be real-valued numbers, though not
-necessarily `Real` (e.g. tracing-number types), realness is checked via
-`real(T) === T`.
+and may specialize [`mul_impl`](@ref) for application to matrices, which
+is column-wise by default. `Base.:(*)`, `Base.:(+)` and operator
+application are only defined for `MatrixShapedOperator` itself and
+dispatch to [`mul_impl`](@ref) and [`add_impl`](@ref) after argument
+checking, to keep the method footprint on `Base` operators small.
+Element types must be real-valued numbers, though not necessarily `Real`
+(e.g. tracing-number types), realness is checked via `real(T) === T`.
 
-`Base.transpose`, multiplication with adjoint/transposed vectors, scalar
-scaling, operator sums via `+` (see [`MatrixShapedSum`](@ref)), operator
-products via `*` (see [`MatrixShapedProduct`](@ref)), `LinearAlgebra.mul!`
-and materialization via `Base.Matrix` are provided generically.
+`Base.transpose`, scalar scaling, `LinearAlgebra.mul!` and
+materialization via `Base.Matrix` are provided generically.
 """
 abstract type MatrixShapedOperator{T<:Number} end
 export MatrixShapedOperator
@@ -52,14 +67,15 @@ Base.transpose(op::MatrixShapedOperator) = adjoint(op)
 """
     MatrixShapedOperators.mul_impl(a, b)
 
-Implements multiplication for [`MatrixShapedOperator`](@ref)s: with a
-vector or matrix `b` (matrices are applied column-wise by default), with
-another operator (a [`MatrixShapedProduct`](@ref) by default) or with a
-number `a` or `b`.
+Implements operator application and multiplication for
+[`MatrixShapedOperator`](@ref)s: application to a vector or matrix `b`
+(matrices are applied column-wise by default), lazy multiplication with
+another operator (a [`MatrixShapedProduct`](@ref) by default) and scalar
+scaling.
 
-`Base.:(*)` involving matrix-shaped operators dispatches to `mul_impl`
-after argument checking, subtypes specialize `mul_impl` instead of
-`Base.:(*)`.
+Operator application and `Base.:(*)` involving matrix-shaped operators
+dispatch to `mul_impl` after argument checking, subtypes specialize
+`mul_impl` instead.
 """
 function mul_impl end
 
@@ -73,43 +89,65 @@ instead of `Base.:(+)`.
 """
 function add_impl end
 
-function Base.:(*)(op::MatrixShapedOperator, x::AbstractVector{<:Number})
+
+# Operator application:
+
+function (op::MatrixShapedOperator)(x::AbstractVector{<:Number})
     size(x, 1) == size(op, 2) || throw(DimensionMismatch(
-        "operator of size $(size(op)) can't be multiplied with vector of length $(length(x))"
+        "operator of size $(size(op)) can't be applied to vector of length $(length(x))"
     ))
     return mul_impl(op, x)
 end
 
-function Base.:(*)(op::MatrixShapedOperator{T}, X::AbstractMatrix{<:Number}) where T
+function (op::MatrixShapedOperator{T})(X::AbstractMatrix{<:Number}) where T
     size(X, 1) == size(op, 2) || throw(DimensionMismatch(
-        "operator of size $(size(op)) can't be multiplied with matrix of size $(size(X))"
+        "operator of size $(size(op)) can't be applied to matrix of size $(size(X))"
     ))
     size(X, 2) == 0 && return similar(X, promote_type(T, eltype(X)), size(op, 1), 0)
     return mul_impl(op, X)
 end
 
+mul_impl(op::MatrixShapedOperator, X::AbstractMatrix{<:Number}) = _mapcols(op, X)
+
+_mapcols(f, X::AbstractMatrix) = reduce(hcat, [f(X[:, j]) for j in axes(X, 2)])
+
+# Application of matrix-shaped operators and matrix-like objects alike,
+# in operator implementations that hold factors of either kind:
+_apply(A, x::AbstractVecOrMat{<:Number}) = A * x
+_apply(op::MatrixShapedOperator, x::AbstractVecOrMat{<:Number}) = op(x)
+
+
+# Operator algebra:
+
 function Base.:(*)(a::MatrixShapedOperator, b::MatrixShapedOperator)
     size(a, 2) == size(b, 1) || throw(DimensionMismatch(
-        "operator of size $(size(a)) can't be composed with operator of size $(size(b))"
+        "operator of size $(size(a)) can't be multiplied with operator of size $(size(b))"
     ))
     return mul_impl(a, b)
 end
+
+Base.:(*)(a::MatrixShapedOperator, B::AbstractMatrix{<:Number}) = a * asoperator(B)
+Base.:(*)(A::AbstractMatrix{<:Number}, b::MatrixShapedOperator) = asoperator(A) * b
 
 Base.:(*)(s::Number, op::MatrixShapedOperator) = mul_impl(s, op)
 Base.:(*)(op::MatrixShapedOperator, s::Number) = mul_impl(s, op)
 
 Base.:(+)(a::MatrixShapedOperator, b::MatrixShapedOperator) = add_impl(a, b)
 
-mul_impl(op::MatrixShapedOperator, X::AbstractMatrix{<:Number}) = _mapcols(Base.Fix1(*, op), X)
+Base.:(+)(a::MatrixShapedOperator, B::AbstractMatrix{<:Number}) = a + asoperator(B)
+Base.:(+)(A::AbstractMatrix{<:Number}, b::MatrixShapedOperator) = asoperator(A) + b
 
-_mapcols(f, X::AbstractMatrix) = reduce(hcat, [f(X[:, j]) for j in axes(X, 2)])
+
+# Multiplication with vectors applies the operator:
+
+Base.:(*)(op::MatrixShapedOperator, x::AbstractVector{<:Number}) = op(x)
 
 function Base.:(*)(x_l::LinearAlgebra.Adjoint{<:Number,<:AbstractVector{<:Number}}, op::MatrixShapedOperator)
-    return adjoint(adjoint(op) * adjoint(x_l))
+    return adjoint(adjoint(op)(adjoint(x_l)))
 end
 
 function Base.:(*)(x_l::LinearAlgebra.Transpose{<:Number,<:AbstractVector{<:Number}}, op::MatrixShapedOperator)
-    return transpose(transpose(op) * transpose(x_l))
+    return transpose(transpose(op)(transpose(x_l)))
 end
 
 
@@ -121,7 +159,7 @@ function LinearAlgebra.mul!(
     y::AbstractVecOrMat{<:Number}, op::MatrixShapedOperator, x::AbstractVecOrMat{<:Number},
     alpha::Number, beta::Number
 )
-    w = op * x
+    w = op(x)
     if iszero(beta)
         y .= alpha .* w
     else
@@ -131,30 +169,9 @@ function LinearAlgebra.mul!(
 end
 
 
-"""
-    MatrixShapedOperators.similar_onehot(A::AbstractArray, ::Type{T}, n::Integer, i::Integer)
-
-Return an array similar to `A`, but with `n` elements of type `T`, all set to
-zero but the `i`-th element set to one.
-"""
-function similar_onehot end
-export similar_onehot
-
-function similar_onehot(A::AbstractArray{<:Number}, ::Type{T}, n::Integer, i::Integer) where {T<:Number}
-    result = similar(A, T, (n,))
-    fill!(result, zero(T))
-    result[i] = one(T)
-    return result
-end
-
-
 function Base.Matrix(op::MatrixShapedOperator{T}) where T
-    m, n = size(op)
-    A = Matrix{T}(undef, (m, n))
-    @threads for j in axes(A, 2)
-        A[:, j] = op * similar_onehot(A, T, n, j)
-    end
-    return A
+    n = size(op, 2)
+    return op(Matrix{T}(I, n, n))
 end
 
 Base.convert(::Type{Matrix}, op::MatrixShapedOperator) = Matrix(op)

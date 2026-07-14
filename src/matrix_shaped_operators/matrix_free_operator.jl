@@ -36,11 +36,8 @@ function mulfunc_operator(
     ::Type{T}, sz::Dims{2}, ovp, vop,
     ::Val{sym}, ::Val{herm}, ::Val{posdef}
 ) where {T<:Real, sym, herm, posdef}
-    A = Matrix{T}(undef, sz)
-    @threads for j in axes(A, 2)
-        A[:, j] = ovp(similar_onehot(A, T, sz[2], j))
-    end
-    return A
+    op = mulfunc_operator(MatrixFreeOperator, T, sz, ovp, vop, Val(sym), Val(herm), Val(posdef))
+    return Matrix(op)
 end
 
 
@@ -61,7 +58,7 @@ op' * x_l == vop(x_l)
 The type parameters `sym`, `herm` and `posdef` are `Bool` values that
 declare whether the operator is symmetric, hermitian and positive definite.
 
-Multiplication with matrices applies `ovp` column-wise, unless the
+Application to matrices applies `ovp` column-wise, unless the
 multiplication functions declare
 [`MatrixShapedOperators.supports_batched_mul`](@ref) support. Scalar
 scaling drops a positive-definiteness declaration since the scalar may be
@@ -164,10 +161,9 @@ export supports_batched_mul
 
 supports_batched_mul(f::ComposedFunction) = supports_batched_mul(f.outer) && supports_batched_mul(f.inner)
 
-# Multiplication by a matrix-shaped operator or a matrix accepts matrix
+# Matrix-shaped operators, used as application functions, accept matrix
 # arguments natively:
-supports_batched_mul(::Base.Fix1{typeof(*),<:MatrixShapedOperator}) = true
-supports_batched_mul(::Base.Fix1{typeof(*),<:AbstractMatrix{<:Number}}) = true
+supports_batched_mul(::MatrixShapedOperator) = true
 
 
 struct _ScaledFunc{S<:Number,F} <: Function
@@ -186,6 +182,6 @@ end
 function mul_impl(s::Number, op::MatrixShapedOperator{T}) where T
     U = promote_type(T, typeof(s))
     MatrixFreeOperator{U,issymmetric(op),ishermitian(op),false}(
-        _ScaledFunc(s, Base.Fix1(*, op)), _ScaledFunc(s, Base.Fix1(*, adjoint(op))), size(op)
+        _ScaledFunc(s, op), _ScaledFunc(s, adjoint(op)), size(op)
     )
 end

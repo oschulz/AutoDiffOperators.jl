@@ -111,7 +111,7 @@ end
 mul_impl(op::MatrixShapedSum, x::AbstractVector{<:Number}) = _sum_mul(op, x)
 mul_impl(op::MatrixShapedSum, X::AbstractMatrix{<:Number}) = _sum_mul(op, X)
 
-_sum_mul(op::MatrixShapedSum, x::AbstractVecOrMat{<:Number}) = mapreduce(Base.Fix2(*, x), +, op.terms)
+_sum_mul(op::MatrixShapedSum, x::AbstractVecOrMat{<:Number}) = mapreduce(Base.Fix2(_apply, x), +, op.terms)
 
 
 _vec_terms(terms::Tuple) = [terms...]
@@ -187,7 +187,7 @@ end
 mul_impl(op::MatrixShapedProduct, x::AbstractVector{<:Number}) = _product_mul(op, x)
 mul_impl(op::MatrixShapedProduct, X::AbstractMatrix{<:Number}) = _product_mul(op, X)
 
-_product_mul(op::MatrixShapedProduct, x::AbstractVecOrMat{<:Number}) = foldr((f, acc) -> f * acc, op.factors; init = x)
+_product_mul(op::MatrixShapedProduct, x::AbstractVecOrMat{<:Number}) = foldr(_apply, op.factors; init = x)
 
 
 mul_impl(a::MatrixShapedOperator, b::MatrixShapedOperator) = MatrixShapedProduct((a, b))

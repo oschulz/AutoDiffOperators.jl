@@ -19,7 +19,7 @@ _rct_vjp_call(x, z) = with_vjp_func(_rct_f_vec, x, ADSelector(Enzyme))[2](z)
 _rct_jacop(x) = with_jacobian(_rct_f_vec, x, MatrixFreeOperator, ADSelector(Enzyme))[2]
 _rct_jacop_mul(x, z) = _rct_jacop(x) * z
 _rct_jacop_adjmul(x, z) = _rct_jacop(x)' * z
-_rct_jacop_matmul(x, Z) = _rct_jacop(x) * Z
+_rct_jacop_matmul(x, Z) = _rct_jacop(x)(Z)
 
 Test.@testset "test_reactant" begin
     x = randn(8)

@@ -76,8 +76,8 @@ function test_adsel_functionality(ad::ADSelector)
         @test @inferred(J' * J_z_l) ≈ J_f_ref' * J_z_l
         @test @inferred(J_z_l' * J) ≈ J_z_l' * J_f_ref
         let Z_r = rand(Float32, size(x, 1), 3), Z_l = rand(Float32, size(f_x_ref, 1), 3)
-            @test J * Z_r ≈ J_f_ref * Z_r
-            @test J' * Z_l ≈ J_f_ref' * Z_l
+            @test J(Z_r) ≈ J_f_ref * Z_r
+            @test J'(Z_l) ≈ J_f_ref' * Z_l
         end
 
 

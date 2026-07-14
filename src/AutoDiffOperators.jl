@@ -22,9 +22,10 @@ include("util.jl")
 include("matrix_shaped_operators/MatrixShapedOperators.jl")
 
 using .MatrixShapedOperators
-using .MatrixShapedOperators: mulfunc_operator, supports_batched_mul, similar_onehot,
+using .MatrixShapedOperators: mulfunc_operator, supports_batched_mul,
     mul_impl, add_impl
-export MatrixShapedOperator, MatrixFreeOperator, RowGramOperator, gram_factor,
+export MatrixShapedOperator, MatrixFreeOperator, WrappedMatrixOperator, asoperator,
+    RowGramOperator, gram_factor,
     MatrixShapedSum, MatrixShapedProduct, UniformScalingOperator,
     diagonal_operator, blockdiag_operator
 

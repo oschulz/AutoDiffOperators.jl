@@ -23,9 +23,8 @@ module MatrixShapedOperators
 
 using LinearAlgebra
 
-using Base.Threads: @threads
-
 include("matrix_shaped_operator.jl")
+include("wrapped_matrix_operator.jl")
 include("matrix_free_operator.jl")
 include("row_gram_operator.jl")
 include("operator_arithmetic.jl")
