@@ -19,7 +19,12 @@ using FunctionWrappers: FunctionWrapper
 export AbstractADType, NoAutoDiff
 
 include("util.jl")
-include("mulfunc_operator.jl")
+include("matrix_shaped_operators/MatrixShapedOperators.jl")
+
+using .MatrixShapedOperators
+using .MatrixShapedOperators: mulfunc_operator, supports_batched_mul, similar_onehot
+export MatrixShapedOperator, MatrixFreeOperator
+
 include("ad_selector.jl")
 include("jacobian.jl")
 include("gradient.jl")

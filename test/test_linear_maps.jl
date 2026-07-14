@@ -23,8 +23,8 @@ using LinearAlgebra
         @test @inferred(op' * x_l) == A' * x_l
     end
 
-    @testset "MulFuncOperator conversion" begin
-        mfop = MulFuncOperator{T,false,false,false}(jvp, vjp, sz)
+    @testset "MatrixFreeOperator conversion" begin
+        mfop = MatrixFreeOperator{T,false,false,false}(jvp, vjp, sz)
 
         for lm in [
             LinearMap(mfop), LinearMap{T}(mfop), FunctionMap(mfop), FunctionMap{T}(mfop),

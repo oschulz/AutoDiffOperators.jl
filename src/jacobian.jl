@@ -18,7 +18,7 @@ J * z_r ≈ J_explicit * z_r
 z_l' * J ≈ z_l' * J_explicit
 ```
 
-`OP` may be [`MulFuncOperator`](@ref), `Matrix`, or (via package
+`OP` may be [`MatrixFreeOperator`](@ref), `Matrix`, or (via package
 extensions)
 [`LinearMaps.LinearMap`](https://github.com/JuliaLinearAlgebra/LinearMaps.jl)
 (resp. `LinearMaps.FunctionMap`) and

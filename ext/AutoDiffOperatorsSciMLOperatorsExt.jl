@@ -30,14 +30,15 @@ function AutoDiffOperators.mulfunc_operator(
 end
 
 
-function SciMLOperators.FunctionOperator(op::AutoDiffOperators.MulFuncOperator{T}) where T
+function SciMLOperators.FunctionOperator(op::AutoDiffOperators.MatrixFreeOperator{T}) where T
     AutoDiffOperators.mulfunc_operator(
         SciMLOperators.AbstractSciMLOperator, T, size(op), op.ovp, op.vop,
         Val(issymmetric(op)), Val(ishermitian(op)), Val(isposdef(op))
     )
 end
 
-Base.convert(::Type{SciMLOperators.AbstractSciMLOperator}, op::AutoDiffOperators.MulFuncOperator) = SciMLOperators.FunctionOperator(op)
+
+Base.convert(::Type{SciMLOperators.AbstractSciMLOperator}, op::AutoDiffOperators.MatrixFreeOperator) = SciMLOperators.FunctionOperator(op)
 
 
 end # module AutoDiffOperatorsSciMLOperatorsExt

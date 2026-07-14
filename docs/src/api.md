@@ -21,6 +21,6 @@ Order = [:macro, :function]
 # Documentation
 
 ```@autodocs
-Modules = [AutoDiffOperators]
+Modules = [AutoDiffOperators, AutoDiffOperators.MatrixShapedOperators]
 Order = [:module, :type, :constant, :macro, :function]
 ```

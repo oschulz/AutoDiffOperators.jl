@@ -29,8 +29,8 @@ import ForwardDiff
         @test mul!(similar(x_l), op, x_r) ≈ A * x_r
     end
 
-    @testset "MulFuncOperator conversion" begin
-        mfop = MulFuncOperator{T,false,false,false}(jvp, vjp, sz)
+    @testset "MatrixFreeOperator conversion" begin
+        mfop = MatrixFreeOperator{T,false,false,false}(jvp, vjp, sz)
 
         for op in [SciMLOperators.FunctionOperator(mfop), convert(SciMLOperators.AbstractSciMLOperator, mfop)]
             @test op isa SciMLOperators.FunctionOperator
