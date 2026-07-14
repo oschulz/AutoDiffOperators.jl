@@ -18,7 +18,7 @@ struct _WrappedMatrixTestOp{T<:Number,M<:AbstractMatrix{T}} <: MatrixShapedOpera
 end
 Base.size(op::_WrappedMatrixTestOp) = size(op.A)
 Base.adjoint(op::_WrappedMatrixTestOp) = _WrappedMatrixTestOp(copy(adjoint(op.A)))
-Base.:(*)(op::_WrappedMatrixTestOp, x::AbstractVector{<:Number}) = op.A * x
+AutoDiffOperators.mul_impl(op::_WrappedMatrixTestOp, x::AbstractVector{<:Number}) = op.A * x
 LinearAlgebra.issymmetric(op::_WrappedMatrixTestOp) = issymmetric(op.A)
 LinearAlgebra.ishermitian(op::_WrappedMatrixTestOp) = ishermitian(op.A)
 LinearAlgebra.isposdef(op::_WrappedMatrixTestOp) = isposdef(op.A)

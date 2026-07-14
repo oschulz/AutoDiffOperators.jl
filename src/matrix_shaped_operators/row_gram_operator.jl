@@ -60,5 +60,5 @@ function Base.show(io::IO, op::RowGramOperator)
     print(io, ")")
 end
 
-Base.:(*)(op::RowGramOperator, x::AbstractVector{<:Number}) = op.A * (op.A' * x)
-Base.:(*)(op::RowGramOperator, X::AbstractMatrix{<:Number}) = op.A * (op.A' * X)
+mul_impl(op::RowGramOperator, x::AbstractVector{<:Number}) = op.A * (op.A' * x)
+mul_impl(op::RowGramOperator, X::AbstractMatrix{<:Number}) = op.A * (op.A' * X)

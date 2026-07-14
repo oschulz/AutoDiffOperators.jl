@@ -47,8 +47,8 @@ function Base.show(io::IO, op::UniformScalingOperator)
     print(io, ")")
 end
 
-Base.:(*)(op::UniformScalingOperator, x::AbstractVector{<:Number}) = op.λ .* x
-Base.:(*)(op::UniformScalingOperator, X::AbstractMatrix{<:Number}) = op.λ .* X
+mul_impl(op::UniformScalingOperator, x::AbstractVector{<:Number}) = op.λ .* x
+mul_impl(op::UniformScalingOperator, X::AbstractMatrix{<:Number}) = op.λ .* X
 
 
 """
@@ -108,8 +108,8 @@ function Base.show(io::IO, op::MatrixShapedSum)
     print(io, ")")
 end
 
-Base.:(*)(op::MatrixShapedSum, x::AbstractVector{<:Number}) = _sum_mul(op, x)
-Base.:(*)(op::MatrixShapedSum, X::AbstractMatrix{<:Number}) = _sum_mul(op, X)
+mul_impl(op::MatrixShapedSum, x::AbstractVector{<:Number}) = _sum_mul(op, x)
+mul_impl(op::MatrixShapedSum, X::AbstractMatrix{<:Number}) = _sum_mul(op, X)
 
 _sum_mul(op::MatrixShapedSum, x::AbstractVecOrMat{<:Number}) = mapreduce(Base.Fix2(*, x), +, op.terms)
 
@@ -120,10 +120,10 @@ _vec_terms(terms::AbstractVector) = terms
 _cat_terms(a::Tuple, b::Tuple) = (a..., b...)
 _cat_terms(a, b) = vcat(_vec_terms(a), _vec_terms(b))
 
-Base.:(+)(a::MatrixShapedOperator, b::MatrixShapedOperator) = MatrixShapedSum((a, b))
-Base.:(+)(a::MatrixShapedSum, b::MatrixShapedOperator) = MatrixShapedSum(_cat_terms(a.terms, (b,)))
-Base.:(+)(a::MatrixShapedOperator, b::MatrixShapedSum) = MatrixShapedSum(_cat_terms((a,), b.terms))
-Base.:(+)(a::MatrixShapedSum, b::MatrixShapedSum) = MatrixShapedSum(_cat_terms(a.terms, b.terms))
+add_impl(a::MatrixShapedOperator, b::MatrixShapedOperator) = MatrixShapedSum((a, b))
+add_impl(a::MatrixShapedSum, b::MatrixShapedOperator) = MatrixShapedSum(_cat_terms(a.terms, (b,)))
+add_impl(a::MatrixShapedOperator, b::MatrixShapedSum) = MatrixShapedSum(_cat_terms((a,), b.terms))
+add_impl(a::MatrixShapedSum, b::MatrixShapedSum) = MatrixShapedSum(_cat_terms(a.terms, b.terms))
 
 Base.:(+)(a::MatrixShapedOperator, J::UniformScaling) = a + UniformScalingOperator(J.λ, size(a, 1))
 Base.:(+)(J::UniformScaling, a::MatrixShapedOperator) = a + J
@@ -184,13 +184,13 @@ function Base.show(io::IO, op::MatrixShapedProduct)
     print(io, ")")
 end
 
-Base.:(*)(op::MatrixShapedProduct, x::AbstractVector{<:Number}) = _product_mul(op, x)
-Base.:(*)(op::MatrixShapedProduct, X::AbstractMatrix{<:Number}) = _product_mul(op, X)
+mul_impl(op::MatrixShapedProduct, x::AbstractVector{<:Number}) = _product_mul(op, x)
+mul_impl(op::MatrixShapedProduct, X::AbstractMatrix{<:Number}) = _product_mul(op, X)
 
 _product_mul(op::MatrixShapedProduct, x::AbstractVecOrMat{<:Number}) = foldr((f, acc) -> f * acc, op.factors; init = x)
 
 
-Base.:(*)(a::MatrixShapedOperator, b::MatrixShapedOperator) = MatrixShapedProduct((a, b))
-Base.:(*)(a::MatrixShapedProduct, b::MatrixShapedOperator) = MatrixShapedProduct(_cat_terms(a.factors, (b,)))
-Base.:(*)(a::MatrixShapedOperator, b::MatrixShapedProduct) = MatrixShapedProduct(_cat_terms((a,), b.factors))
-Base.:(*)(a::MatrixShapedProduct, b::MatrixShapedProduct) = MatrixShapedProduct(_cat_terms(a.factors, b.factors))
+mul_impl(a::MatrixShapedOperator, b::MatrixShapedOperator) = MatrixShapedProduct((a, b))
+mul_impl(a::MatrixShapedProduct, b::MatrixShapedOperator) = MatrixShapedProduct(_cat_terms(a.factors, (b,)))
+mul_impl(a::MatrixShapedOperator, b::MatrixShapedProduct) = MatrixShapedProduct(_cat_terms((a,), b.factors))
+mul_impl(a::MatrixShapedProduct, b::MatrixShapedProduct) = MatrixShapedProduct(_cat_terms(a.factors, b.factors))

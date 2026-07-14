@@ -138,19 +138,10 @@ function Base.adjoint(op::MatrixFreeOperator{T,sym,herm,posdef}) where {T,sym,he
 end
 
 
-function Base.:(*)(op::MatrixFreeOperator, x::AbstractVector{<:Number})
-    length(x) == op.sz[2] || throw(DimensionMismatch(
-        "operator of size $(op.sz) can't be multiplied with vector of length $(length(x))"
-    ))
-    return op.ovp(x)
-end
+mul_impl(op::MatrixFreeOperator, x::AbstractVector{<:Number}) = op.ovp(x)
 
-function Base.:(*)(op::MatrixFreeOperator{T}, X::AbstractMatrix{<:Number}) where T
-    size(X, 1) == op.sz[2] || throw(DimensionMismatch(
-        "operator of size $(op.sz) can't be multiplied with matrix of size $(size(X))"
-    ))
+function mul_impl(op::MatrixFreeOperator, X::AbstractMatrix{<:Number})
     supports_batched_mul(op.ovp) && return op.ovp(X)
-    size(X, 2) == 0 && return similar(X, promote_type(T, eltype(X)), op.sz[1], 0)
     return _mapcols(op.ovp, X)
 end
 
@@ -187,16 +178,14 @@ end
 
 supports_batched_mul(sf::_ScaledFunc) = supports_batched_mul(sf.f)
 
-function Base.:(*)(s::Number, op::MatrixFreeOperator{T,sym,herm}) where {T,sym,herm}
+function mul_impl(s::Number, op::MatrixFreeOperator{T,sym,herm}) where {T,sym,herm}
     U = promote_type(T, typeof(s))
     MatrixFreeOperator{U,sym,herm,false}(_ScaledFunc(s, op.ovp), _ScaledFunc(s, op.vop), op.sz)
 end
 
-function Base.:(*)(s::Number, op::MatrixShapedOperator{T}) where T
+function mul_impl(s::Number, op::MatrixShapedOperator{T}) where T
     U = promote_type(T, typeof(s))
     MatrixFreeOperator{U,issymmetric(op),ishermitian(op),false}(
         _ScaledFunc(s, Base.Fix1(*, op)), _ScaledFunc(s, Base.Fix1(*, adjoint(op))), size(op)
     )
 end
-
-Base.:(*)(op::MatrixShapedOperator, s::Number) = s * op
