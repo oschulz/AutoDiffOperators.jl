@@ -4,6 +4,7 @@ using AutoDiffOperators
 using Test
 
 using LinearAlgebra
+import Statistics
 
 struct _DiagMulTestFunc{T<:AbstractVector} <: Function
     d::T
@@ -290,6 +291,13 @@ end
         @test (op_a + sv).terms isa AbstractVector
         @test Matrix(op_a + sv) ≈ A + sum(Ms)
         @test Matrix(sv + sv) ≈ 2 * sum(Ms)
+
+        m = Statistics.mean(ops)
+        @test m isa MatrixShapedProduct{Float32}
+        @test m.factors[1] isa UniformScalingOperator{Float32}
+        @test m.factors[2].terms isa AbstractVector
+        @test m * x ≈ Statistics.mean(Ms) * x
+        @test Matrix(Statistics.mean((op_a, op_b))) ≈ (A + B) / 2
     end
 end
 
