@@ -30,6 +30,7 @@ export MatrixShapedOperator, MatrixShaped, MulFuncOperator, mulfunc_operator,
     diagonal_operator, blockdiag_operator
 
 include("ad_selector.jl")
+include("ad_jacobian.jl")
 include("jacobian.jl")
 include("gradient.jl")
 include("fwd_rev_ad_selector.jl")

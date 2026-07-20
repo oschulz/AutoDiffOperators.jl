@@ -18,8 +18,9 @@ J * z_r ≈ J_explicit * z_r
 z_l' * J ≈ z_l' * J_explicit
 ```
 
-`OP` may be `MulFuncOperator`, `Matrix`, or (via package extensions of
-MatrixShapedOperators)
+`OP` may be [`ADJacobian`](@ref) (a matrix-shaped operator that keeps
+`f`, `x` and `ad` accessible), `MulFuncOperator`, `Matrix`, or (via
+package extensions of MatrixShapedOperators)
 [`LinearMaps.LinearMap`](https://github.com/JuliaLinearAlgebra/LinearMaps.jl)
 (resp. `LinearMaps.FunctionMap`) and
 [`SciMLOperators.AbstractSciMLOperator`](https://github.com/SciML/SciMLOperators.jl)
@@ -60,6 +61,19 @@ _maybe_with_vjp_func(::NoAutoDiff, f, x, ad::ADSelector) = f(with_floatlike_cont
 struct _NoVJPFunc{AD<:ADSelector} <: Function end
 function (::_NoVJPFunc{AD})(::AbstractVector{<:Number}) where AD
     throw(ErrorException("No reverse-mode automatic differentiation available for AD-selector $(nameof(AD)), can't compute vector * Jacobian product"))
+end
+
+
+function with_jacobian(f::F, x::AbstractVector{<:Number}, ::Type{ADJacobian}, ad::ADSelector) where F
+    ad_fwd = forward_adtype(ad)
+    ad_rev = reverse_adtype(ad)
+    f_jvp = _maybe_jvp_func(ad_fwd, f, x, ad)
+    y, f_vjp = _maybe_with_vjp_func(ad_rev, f, x, ad)
+    T = promote_type(float(eltype(x)), float(eltype(y)))
+    sz = Dims((size(y, 1), size(x, 1)))
+    float_x = with_floatlike_contents(x)
+    J = ADJacobian{T,F,typeof(float_x),typeof(ad),typeof(f_jvp),typeof(f_vjp)}(f, float_x, ad, f_jvp, f_vjp, sz)
+    return y, J
 end
 
 
