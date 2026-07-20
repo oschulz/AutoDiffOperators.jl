@@ -19,13 +19,13 @@ using FunctionWrappers: FunctionWrapper
 export AbstractADType, NoAutoDiff
 
 include("util.jl")
-include("matrix_shaped_operators/MatrixShapedOperators.jl")
 
-using .MatrixShapedOperators
-using .MatrixShapedOperators: mulfunc_operator, supports_batched_mul,
-    mul_impl, add_impl
-export MatrixShapedOperator, MatrixFreeOperator, WrappedMatrixOperator, asoperator,
-    RowGramOperator, gram_factor,
+# Operator types live in MatrixShapedOperators, re-export the operator
+# API for convenience of downstream code:
+using MatrixShapedOperators
+export MatrixShapedOperator, MatrixShaped, MulFuncOperator, mulfunc_operator,
+    MatrixAsOperator, asoperator, asmatrix,
+    RowGramOperator, gram_factor, lower_cholesky, WoodburyOperator,
     MatrixShapedSum, MatrixShapedProduct, UniformScalingOperator,
     diagonal_operator, blockdiag_operator
 

@@ -68,9 +68,9 @@ function test_adsel_functionality(ad::ADSelector)
         @test @inferred(J * J_z_r) ≈ J_f_ref * J_z_r
         @test @inferred(J_z_l' * J) ≈ J_z_l' * J_f_ref
 
-        f_x, J = @inferred with_jacobian(f, x, MatrixFreeOperator, ad)
+        f_x, J = @inferred with_jacobian(f, x, MulFuncOperator, ad)
         @test f_x ≈ f_x_ref
-        @test J isa MatrixFreeOperator
+        @test J isa MulFuncOperator
         @test Matrix(J) ≈ J_f_ref
         @test @inferred(J * J_z_r) ≈ J_f_ref * J_z_r
         @test @inferred(J' * J_z_l) ≈ J_f_ref' * J_z_l

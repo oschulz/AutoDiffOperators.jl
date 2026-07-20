@@ -18,14 +18,14 @@ J * z_r ≈ J_explicit * z_r
 z_l' * J ≈ z_l' * J_explicit
 ```
 
-`OP` may be [`MatrixFreeOperator`](@ref), `Matrix`, or (via package
-extensions)
+`OP` may be `MulFuncOperator`, `Matrix`, or (via package extensions of
+MatrixShapedOperators)
 [`LinearMaps.LinearMap`](https://github.com/JuliaLinearAlgebra/LinearMaps.jl)
 (resp. `LinearMaps.FunctionMap`) and
 [`SciMLOperators.AbstractSciMLOperator`](https://github.com/SciML/SciMLOperators.jl)
 (resp. `SciMLOperators.FunctionOperator`). Other operator types can be
-supported by specializing
-[`mulfunc_operator`](@ref) for the operator type.
+supported by specializing `MatrixShapedOperators.mulfunc_operator` for
+the operator type.
 
 The default implementation of `with_jacobian` uses
 [`jvp_func`](@ref) and [`with_vjp_func`](@ref) to implement (adjoint)
@@ -42,7 +42,7 @@ function with_jacobian(f::F, x::AbstractVector{<:Number}, ::Type{OP}, ad::ADSele
     y, f_vjp = _maybe_with_vjp_func(ad_rev, f, x, ad)
     T = promote_type(float(eltype(x)), float(eltype(y)))
     sz = Dims((size(y,1), size(x,1)))
-    J = mulfunc_operator(OP, T, sz, f_jvp, f_vjp, Val(false), Val(false), Val(false))
+    J = mulfunc_operator(OP, T, sz, f_jvp, f_vjp)
     return y, J
 end
 
