@@ -35,7 +35,7 @@ Base.size(J::ADJacobian) = J.sz
 
 MatrixShapedOperators.explicit_mul_impl(J::ADJacobian, z::AbstractVector{<:Number}) = J.jvp(z)
 
-MatrixShapedOperators.BatchedMulStyle(J::ADJacobian) = MatrixShapedOperators.BatchedMulStyle(J.jvp)
+MatrixShapedOperators.BatchedMulStyle(::ADJacobian) = MatrixShapedOperators.BatchedMul()
 
 Base.:(==)(a::ADJacobian, b::ADJacobian) =
     a.f == b.f && a.x == b.x && a.ad == b.ad && a.sz == b.sz
@@ -70,7 +70,7 @@ Base.size(J′::ADJacobianAdjoint) = reverse(size(parent(J′)))
 
 MatrixShapedOperators.explicit_mul_impl(J′::ADJacobianAdjoint, z::AbstractVector{<:Number}) = parent(J′).vjp(z)
 
-MatrixShapedOperators.BatchedMulStyle(J′::ADJacobianAdjoint) = MatrixShapedOperators.BatchedMulStyle(parent(J′).vjp)
+MatrixShapedOperators.BatchedMulStyle(::ADJacobianAdjoint) = MatrixShapedOperators.BatchedMul()
 
 Base.:(==)(a::ADJacobianAdjoint, b::ADJacobianAdjoint) = parent(a) == parent(b)
 
@@ -85,3 +85,45 @@ end
 # operator application to an identity matrix:
 Base.AbstractMatrix(J::ADJacobian) = _with_jacobian_matrix(J.f, J.x, J.ad)[2]
 Base.AbstractMatrix(J′::ADJacobianAdjoint) = copy(adjoint(AbstractMatrix(parent(J′))))
+
+
+# Batched application computes all Jacobian-vector products of a column
+# batch in a single DI pushforward resp. pullback call. Traced arrays
+# keep the column-wise path, whose per-column functions carry the
+# tracing-compatible specializations:
+
+function MatrixShapedOperators.batched_mul_impl(J::ADJacobian, X::AbstractMatrix{<:Number})
+    return _batched_jvp(_traced_array_kind(J.x), forward_adtype(J.ad), J, X)
+end
+
+function MatrixShapedOperators.batched_mul_impl(J′::ADJacobianAdjoint, X::AbstractMatrix{<:Number})
+    J = parent(J′)
+    return _batched_vjp(_traced_array_kind(J.x), reverse_adtype(J.ad), J, X)
+end
+
+_column_tuple(X::AbstractMatrix) = Tuple(X[:, j] for j in axes(X, 2))
+
+_jvp_cols(J::ADJacobian, X::AbstractMatrix) = reduce(hcat, [J.jvp(X[:, j]) for j in axes(X, 2)])
+_vjp_cols(J::ADJacobian, X::AbstractMatrix) = reduce(hcat, [J.vjp(X[:, j]) for j in axes(X, 2)])
+
+_batched_jvp(::Val, ::AbstractADType, J::ADJacobian, X::AbstractMatrix) = _jvp_cols(J, X)
+_batched_jvp(::Nothing, ::NoAutoDiff, J::ADJacobian, X::AbstractMatrix) = _jvp_cols(J, X)
+
+function _batched_jvp(::Nothing, ad_fwd::AbstractADType, J::ADJacobian, X::AbstractMatrix)
+    f, x = J.f, J.x
+    tx = _column_tuple(X)
+    prep = DI.prepare_pushforward_same_point(f, ad_fwd, x, tx)
+    ty = DI.pushforward(f, prep, ad_fwd, x, tx)
+    return reduce(hcat, ty)
+end
+
+_batched_vjp(::Val, ::AbstractADType, J::ADJacobian, X::AbstractMatrix) = _vjp_cols(J, X)
+_batched_vjp(::Nothing, ::NoAutoDiff, J::ADJacobian, X::AbstractMatrix) = _vjp_cols(J, X)
+
+function _batched_vjp(::Nothing, ad_rev::AbstractADType, J::ADJacobian, X::AbstractMatrix)
+    f, x = J.f, J.x
+    ty = _column_tuple(X)
+    prep = DI.prepare_pullback_same_point(f, ad_rev, x, ty)
+    tx = DI.pullback(f, prep, ad_rev, x, ty)
+    return reduce(hcat, tx)
+end
