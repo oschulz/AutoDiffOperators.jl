@@ -1,25 +1,41 @@
 # This file is a part of AutoDiffOperators.jl, licensed under the MIT License (MIT).
 
+module AutoDiffOperatorsMatrixShapedOperatorsExt
+
+using MatrixShapedOperators
+using MatrixShapedOperators: mulfunc_operator
+
+import AutoDiffOperators
+using AutoDiffOperators: ADSelector, forward_adtype, reverse_adtype,
+    with_floatlike_contents, _maybe_jvp_func, _maybe_with_vjp_func,
+    _with_jacobian_matrix, _traced_array_kind
+using AutoDiffOperators: AbstractADType, NoAutoDiff
+
+const DI = AutoDiffOperators.DI
+
 
 """
-    struct ADJacobian{T<:Number} <: MatrixShapedOperator{T}
+    ADJacobian{T<:Number} <: MatrixShapedOperator{T}
 
 Represents the Jacobian of a function `f` at a point `x` as a
 matrix-shaped operator, computed via automatic differentiation on
 demand.
 
-Constructed via [`with_jacobian`](@ref):
+Constructed via `with_jacobian`, requested by the abstract operator
+type:
 
 ```julia
-y, J = with_jacobian(f, x, ADJacobian, ad)
+using AutoDiffOperators, MatrixShapedOperators
+
+y, J = with_jacobian(f, x, MatrixShapedOperator, ad)
 J * z        # Jacobian-vector product via forward-mode AD
 J' * z       # vector-Jacobian product via reverse-mode AD
 Matrix(J)    # explicit Jacobian in a single AD pass
 ```
 
 Unlike a `MulFuncOperator` holding opaque AD closures, `ADJacobian`
-keeps `f`, `x` and the [`ADSelector`](@ref) accessible as fields
-(`x` with float-like contents).
+keeps `f`, `x` and the `ADSelector` accessible as fields (`x` with
+float-like contents).
 """
 struct ADJacobian{T<:Number,F,V<:AbstractVector{<:Number},AD<:ADSelector,JF,VF} <: MatrixShapedOperator{T}
     f::F
@@ -29,7 +45,6 @@ struct ADJacobian{T<:Number,F,V<:AbstractVector{<:Number},AD<:ADSelector,JF,VF} 
     vjp::VF
     sz::Dims{2}
 end
-export ADJacobian
 
 Base.size(J::ADJacobian) = J.sz
 
@@ -52,7 +67,7 @@ end
 
 
 """
-    struct ADJacobianAdjoint{T<:Number} <: MatrixShapedOperator{T}
+    ADJacobianAdjoint{T<:Number} <: MatrixShapedOperator{T}
 
 The adjoint of an [`ADJacobian`](@ref), available via `Base.parent`;
 applies vector-Jacobian products via reverse-mode AD.
@@ -127,3 +142,37 @@ function _batched_vjp(::Nothing, ad_rev::AbstractADType, J::ADJacobian, X::Abstr
     tx = DI.pullback(f, prep, ad_rev, x, ty)
     return reduce(hcat, tx)
 end
+
+
+# Requesting the abstract operator type yields an ADJacobian:
+function AutoDiffOperators.with_jacobian(
+    f::F, x::AbstractVector{<:Number},
+    ::Union{Type{MatrixShapedOperator},Type{ADJacobian}}, ad::ADSelector
+) where F
+    ad_fwd = forward_adtype(ad)
+    ad_rev = reverse_adtype(ad)
+    f_jvp = _maybe_jvp_func(ad_fwd, f, x, ad)
+    y, f_vjp = _maybe_with_vjp_func(ad_rev, f, x, ad)
+    T = promote_type(float(eltype(x)), float(eltype(y)))
+    sz = Dims((size(y, 1), size(x, 1)))
+    float_x = with_floatlike_contents(x)
+    J = ADJacobian{T,F,typeof(float_x),typeof(ad),typeof(f_jvp),typeof(f_vjp)}(f, float_x, ad, f_jvp, f_vjp, sz)
+    return y, J
+end
+
+# Other operator types are generated via the mulfunc_operator seam
+# (specialized by the MatrixShapedOperators package extensions for e.g.
+# LinearMaps and SciMLOperators types):
+function AutoDiffOperators.with_jacobian(f::F, x::AbstractVector{<:Number}, ::Type{OP}, ad::ADSelector) where {F,OP}
+    ad_fwd = forward_adtype(ad)
+    ad_rev = reverse_adtype(ad)
+    f_jvp = _maybe_jvp_func(ad_fwd, f, x, ad)
+    y, f_vjp = _maybe_with_vjp_func(ad_rev, f, x, ad)
+    T = promote_type(float(eltype(x)), float(eltype(y)))
+    sz = Dims((size(y, 1), size(x, 1)))
+    J = mulfunc_operator(OP, T, sz, f_jvp, f_vjp)
+    return y, J
+end
+
+
+end # module AutoDiffOperatorsMatrixShapedOperatorsExt

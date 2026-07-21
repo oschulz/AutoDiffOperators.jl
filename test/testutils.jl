@@ -5,6 +5,10 @@ using Test
 
 using ForwardDiff
 using LinearMaps
+using MatrixShapedOperators
+
+const _mso_ext = Base.get_extension(AutoDiffOperators, :AutoDiffOperatorsMatrixShapedOperatorsExt)
+const ADJacobian = _mso_ext.ADJacobian
 
 using ADTypes: NoAutoDiff
 using FunctionWrappers: FunctionWrapper
@@ -80,7 +84,7 @@ function test_adsel_functionality(ad::ADSelector)
             @test J'(Z_l) ≈ J_f_ref' * Z_l
         end
 
-        f_x, J = @inferred with_jacobian(f, x, ADJacobian, ad)
+        f_x, J = @inferred with_jacobian(f, x, MatrixShapedOperator, ad)
         @test f_x ≈ f_x_ref
         @test J isa ADJacobian
         @test J.f === f && J.ad === ad

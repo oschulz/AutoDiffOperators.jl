@@ -19,18 +19,7 @@ using FunctionWrappers: FunctionWrapper
 export AbstractADType, NoAutoDiff
 
 include("util.jl")
-
-# Operator types live in MatrixShapedOperators, re-export the operator
-# API for convenience of downstream code:
-using MatrixShapedOperators
-export MatrixShapedOperator, MatrixShaped, MulFuncOperator, mulfunc_operator,
-    MatrixAsOperator, asoperator, asmatrix,
-    RowGramOperator, gram_factor, lower_cholesky, WoodburyOperator,
-    MatrixShapedSum, MatrixShapedProduct, UniformScalingOperator,
-    diagonal_operator, blockdiag_operator
-
 include("ad_selector.jl")
-include("ad_jacobian.jl")
 include("jacobian.jl")
 include("gradient.jl")
 include("fwd_rev_ad_selector.jl")

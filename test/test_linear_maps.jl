@@ -1,6 +1,7 @@
 # This file is a part of AutoDiffOperators.jl, licensed under the MIT License (MIT).
 
 using AutoDiffOperators
+using MatrixShapedOperators: MulFuncOperator
 using LinearMaps
 using Test
 

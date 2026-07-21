@@ -2,7 +2,7 @@
 
 This package provides multiplicative operators that act via automatic differentiation (AD), as well as additional AD-related functionality.
 
-For Jacobians, this package provides the function [`with_jacobian`](@ref). It can return implicit Jacobian operators (the `MulFuncOperator` of [MatrixShapedOperators](https://github.com/oschulz/MatrixShapedOperators.jl) or, via package extensions, a [`LinearMap`/`FunctionMap`](https://github.com/JuliaLinearAlgebra/LinearMaps.jl) or a [`SciMLOperators.FunctionOperator`](https://github.com/SciML/SciMLOperators.jl)) as well as explicit Jacobian operators (i.e. a `DenseMatrix`). Lower-level functions [`with_jvp`](@ref), [`jvp_func`](@ref), [`with_vjp_func`](@ref) are provided as well.
+For Jacobians, this package provides the function [`with_jacobian`](@ref). With [MatrixShapedOperators](https://github.com/oschulz/MatrixShapedOperators.jl) loaded it can return implicit Jacobian operators (an AD-Jacobian operator for `OP = MatrixShapedOperator`, a `MulFuncOperator`, or, via package extensions of MatrixShapedOperators, a [`LinearMap`/`FunctionMap`](https://github.com/JuliaLinearAlgebra/LinearMaps.jl) or a [`SciMLOperators.FunctionOperator`](https://github.com/SciML/SciMLOperators.jl)) as well as explicit Jacobian operators (i.e. a `DenseMatrix`). Lower-level functions [`with_jvp`](@ref), [`jvp_func`](@ref), [`with_vjp_func`](@ref) are provided as well.
 
 In respect to gradients, different Julia algorithm packages require function and gradient calculation to be passed in a different fashion. AutoDiffOperators provides
 

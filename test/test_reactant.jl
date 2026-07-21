@@ -2,6 +2,7 @@
 
 using Test
 using AutoDiffOperators
+using MatrixShapedOperators: MulFuncOperator
 using LinearAlgebra
 import Reactant, Enzyme
 

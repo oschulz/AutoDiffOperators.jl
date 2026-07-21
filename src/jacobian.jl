@@ -18,15 +18,18 @@ J * z_r ≈ J_explicit * z_r
 z_l' * J ≈ z_l' * J_explicit
 ```
 
-`OP` may be [`ADJacobian`](@ref) (a matrix-shaped operator that keeps
-`f`, `x` and `ad` accessible), `MulFuncOperator`, `Matrix`, or (via
-package extensions of MatrixShapedOperators)
+`OP` may always be `Matrix` (resp. `DenseMatrix`). With
+[MatrixShapedOperators](https://github.com/oschulz/MatrixShapedOperators.jl)
+loaded, `OP = MatrixShapedOperator` returns an implicit AD-Jacobian
+operator that keeps `f`, `x` and `ad` accessible as fields,
+`OP = MulFuncOperator` a plain multiplication-function operator, and
+(via package extensions of MatrixShapedOperators)
 [`LinearMaps.LinearMap`](https://github.com/JuliaLinearAlgebra/LinearMaps.jl)
 (resp. `LinearMaps.FunctionMap`) and
 [`SciMLOperators.AbstractSciMLOperator`](https://github.com/SciML/SciMLOperators.jl)
-(resp. `SciMLOperators.FunctionOperator`). Other operator types can be
-supported by specializing `MatrixShapedOperators.mulfunc_operator` for
-the operator type.
+(resp. `SciMLOperators.FunctionOperator`) work as well. Other operator
+types can be supported by specializing
+`MatrixShapedOperators.mulfunc_operator` for the operator type.
 
 The default implementation of `with_jacobian` uses
 [`jvp_func`](@ref) and [`with_vjp_func`](@ref) to implement (adjoint)
@@ -35,17 +38,6 @@ multiplication of `J` with (adjoint) vectors.
 function with_jacobian end
 export with_jacobian
 
-
-function with_jacobian(f::F, x::AbstractVector{<:Number}, ::Type{OP}, ad::ADSelector) where {F,OP}
-    ad_fwd = forward_adtype(ad)
-    ad_rev = reverse_adtype(ad)
-    f_jvp = _maybe_jvp_func(ad_fwd, f, x, ad)
-    y, f_vjp = _maybe_with_vjp_func(ad_rev, f, x, ad)
-    T = promote_type(float(eltype(x)), float(eltype(y)))
-    sz = Dims((size(y,1), size(x,1)))
-    J = mulfunc_operator(OP, T, sz, f_jvp, f_vjp)
-    return y, J
-end
 
 _maybe_jvp_func(ad_fwd::AbstractADType, f::F, x, ::ADSelector) where F = jvp_func(f, x, ad_fwd)
 _maybe_jvp_func(::NoAutoDiff, f, x, ad::ADSelector) = _NoJVPFunc{typeof(ad)}()
@@ -61,19 +53,6 @@ _maybe_with_vjp_func(::NoAutoDiff, f, x, ad::ADSelector) = f(with_floatlike_cont
 struct _NoVJPFunc{AD<:ADSelector} <: Function end
 function (::_NoVJPFunc{AD})(::AbstractVector{<:Number}) where AD
     throw(ErrorException("No reverse-mode automatic differentiation available for AD-selector $(nameof(AD)), can't compute vector * Jacobian product"))
-end
-
-
-function with_jacobian(f::F, x::AbstractVector{<:Number}, ::Type{ADJacobian}, ad::ADSelector) where F
-    ad_fwd = forward_adtype(ad)
-    ad_rev = reverse_adtype(ad)
-    f_jvp = _maybe_jvp_func(ad_fwd, f, x, ad)
-    y, f_vjp = _maybe_with_vjp_func(ad_rev, f, x, ad)
-    T = promote_type(float(eltype(x)), float(eltype(y)))
-    sz = Dims((size(y, 1), size(x, 1)))
-    float_x = with_floatlike_contents(x)
-    J = ADJacobian{T,F,typeof(float_x),typeof(ad),typeof(f_jvp),typeof(f_vjp)}(f, float_x, ad, f_jvp, f_vjp, sz)
-    return y, J
 end
 
 
