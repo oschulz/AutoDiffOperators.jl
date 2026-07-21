@@ -52,8 +52,13 @@ MatrixShapedOperators.explicit_mul_impl(J::ADJacobian, z::AbstractVector{<:Numbe
 
 MatrixShapedOperators.BatchedMulStyle(::ADJacobian) = MatrixShapedOperators.BatchedMul()
 
+# The jvp/vjp closures derive deterministically from (f, x, ad), so
+# they take part in neither equality nor hashing:
 Base.:(==)(a::ADJacobian, b::ADJacobian) =
     a.f == b.f && a.x == b.x && a.ad == b.ad && a.sz == b.sz
+
+Base.hash(J::ADJacobian, h::UInt) =
+    hash(J.sz, hash(J.ad, hash(J.x, hash(J.f, hash(:ADJacobian, h)))))
 
 function Base.show(io::IO, J::ADJacobian)
     print(io, "ADJacobian(")
@@ -88,6 +93,8 @@ MatrixShapedOperators.explicit_mul_impl(J′::ADJacobianAdjoint, z::AbstractVect
 MatrixShapedOperators.BatchedMulStyle(::ADJacobianAdjoint) = MatrixShapedOperators.BatchedMul()
 
 Base.:(==)(a::ADJacobianAdjoint, b::ADJacobianAdjoint) = parent(a) == parent(b)
+
+Base.hash(J′::ADJacobianAdjoint, h::UInt) = hash(parent(J′), hash(:ADJacobianAdjoint, h))
 
 function Base.show(io::IO, J′::ADJacobianAdjoint)
     print(io, "adjoint(")

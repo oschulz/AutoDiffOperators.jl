@@ -98,6 +98,10 @@ function test_adsel_functionality(ad::ADSelector)
         @test parent(J') === J
         @test Matrix(J') ≈ J_f_ref'
         @test occursin("ADJacobian", sprint(show, J))
+        let J2 = with_jacobian(f, x, MatrixShapedOperator, ad)[2]
+            @test J2 == J && hash(J2) == hash(J)
+            @test J2' == J' && hash(J2') == hash(J')
+        end
         let Z_r = rand(Float32, size(x, 1), 3), Z_l = rand(Float32, size(f_x_ref, 1), 3)
             @test J * Z_r ≈ J_f_ref * Z_r
             @test J' * Z_l ≈ J_f_ref' * Z_l
