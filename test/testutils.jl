@@ -106,6 +106,7 @@ function test_adsel_functionality(ad::ADSelector)
             @test J * Z_r ≈ J_f_ref * Z_r
             @test J' * Z_l ≈ J_f_ref' * Z_l
         end
+        @test J * zeros(Float32, size(x, 1), 0) == zeros(Float32, size(f_x_ref, 1), 0)
 
 
         @test @inferred(with_gradient(g, x, ad)) isa Tuple{Vararg{Any,2}}

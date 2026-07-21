@@ -2,7 +2,7 @@
 
 using Test
 using AutoDiffOperators
-using MatrixShapedOperators: MulFuncOperator
+using MatrixShapedOperators: MulFuncOperator, MatrixShapedOperator
 using LinearAlgebra
 import Reactant, Enzyme
 
@@ -21,6 +21,12 @@ _rct_jacop(x) = with_jacobian(_rct_f_vec, x, MulFuncOperator, ADSelector(Enzyme)
 _rct_jacop_mul(x, z) = _rct_jacop(x) * z
 _rct_jacop_adjmul(x, z) = _rct_jacop(x)' * z
 _rct_jacop_matmul(x, Z) = _rct_jacop(x) * Z
+
+# The abstract operator request yields an ADJacobian:
+_rct_adjacop(x) = with_jacobian(_rct_f_vec, x, MatrixShapedOperator, ADSelector(Enzyme))[2]
+_rct_adjacop_mul(x, z) = _rct_adjacop(x) * z
+_rct_adjacop_adjmul(x, z) = _rct_adjacop(x)' * z
+_rct_adjacop_matmul(x, Z) = _rct_adjacop(x) * Z
 
 Test.@testset "test_reactant" begin
     x = randn(8)
@@ -55,4 +61,13 @@ Test.@testset "test_reactant" begin
 
     jacop_matmul_compiled = Reactant.@compile _rct_jacop_matmul(xr, Zr)
     @test Array(jacop_matmul_compiled(xr, Zr)) ≈ J_ref * Z
+
+    adjacop_mul_compiled = Reactant.@compile _rct_adjacop_mul(xr, zr)
+    @test Array(adjacop_mul_compiled(xr, zr)) ≈ J_ref * z
+
+    adjacop_adjmul_compiled = Reactant.@compile _rct_adjacop_adjmul(xr, zr)
+    @test Array(adjacop_adjmul_compiled(xr, zr)) ≈ J_ref' * z
+
+    adjacop_matmul_compiled = Reactant.@compile _rct_adjacop_matmul(xr, Zr)
+    @test Array(adjacop_matmul_compiled(xr, Zr)) ≈ J_ref * Z
 end
