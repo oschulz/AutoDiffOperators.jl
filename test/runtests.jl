@@ -15,10 +15,10 @@ Test.@testset "Package AutoDiffOperators" begin
     include("test_zygote.jl")
     include("test_mooncake.jl")
     include("test_enzyme.jl")
-    # Reactant only supports 64-bit Linux and macOS, and some of its
-    # dependencies break already during precompilation on other platforms,
-    # so it can't be a static test dependency:
-    if Sys.WORD_SIZE == 64 && (Sys.islinux() || Sys.isapple()) && isempty(VERSION.prerelease)
+    # Reactant only supports 64-bit Linux and macOS and Julia 1.10's parallel
+    # precompilation is prone to deadlock on Reactant's large extension set:
+    if Sys.islinux() && Sys.ARCH === :x86_64 &&
+       isempty(VERSION.prerelease) && VERSION >= v"1.11"
         import Pkg
         Base.identify_package("Reactant") === nothing && Pkg.add("Reactant")
         include("test_reactant.jl")

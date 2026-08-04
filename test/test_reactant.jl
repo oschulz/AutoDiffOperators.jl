@@ -1,5 +1,8 @@
 # This file is a part of AutoDiffOperators.jl, licensed under the MIT License (MIT).
 
+# Must be set before Reactant loads XLA, which otherwise grabs most GPU memory:
+haskey(ENV, "XLA_REACTANT_GPU_MEM_FRACTION") || (ENV["XLA_REACTANT_GPU_MEM_FRACTION"] = "0.4")
+
 using Test
 using AutoDiffOperators
 using MatrixShapedOperators: MulFuncOperator, MatrixShapedOperator

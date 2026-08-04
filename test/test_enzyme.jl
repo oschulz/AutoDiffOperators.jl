@@ -7,7 +7,7 @@ using LinearAlgebra
 using ADTypes: AutoEnzyme
 import Enzyme
 
-include("testutils.jl")
+isdefined(Main, :test_adsel_functionality) || include("testutils.jl")
 
 
 @testset "test Enzyme" begin
