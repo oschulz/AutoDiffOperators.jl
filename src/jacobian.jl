@@ -13,55 +13,58 @@ Example:
 using AutoDiffOperators, LinearMaps
 y, J = with_jacobian(f, x, LinearMap, ad)
 y == f(x)
-_, J_explicit = with_jacobian(f, x, DenseMatrix, ad)
+_, J_explicit = with_jacobian(f, x, AbstractMatrix, ad)
 J * z_r ≈ J_explicit * z_r
 z_l' * J ≈ z_l' * J_explicit
 ```
 
-`OP` may be
+`OP` may always be `AbstractMatrix`, resulting in an explicit Jacobian
+matrix whose concrete type depends on the type of `x` (a `Matrix` for a
+plain `Vector`, a static matrix for a static `x`, and so on).
+`OP = MatrixShapedOperator` (from
+[MatrixShapedOperators](https://github.com/oschulz/MatrixShapedOperators.jl))
+returns an implicit AD-Jacobian operator and `OP = MulFuncOperator` a
+plain multiplication-function operator.
 [`LinearMaps.LinearMap`](https://github.com/JuliaLinearAlgebra/LinearMaps.jl)
-(resp. `LinearMaps.FunctionMap`) or `Matrix`. Other operator types can be
-supported by specializing
-[`mulfunc_operator`](@ref) for the operator type.
+(resp. `LinearMaps.FunctionMap`) and
+[`SciMLOperators.AbstractSciMLOperator`](https://github.com/SciML/SciMLOperators.jl)
+(resp. `SciMLOperators.FunctionOperator`) are supported as well. Other
+operator types can be supported by specializing
+`MatrixShapedOperators.mulfunc_operator` for the operator type, with a
+matching `MatrixShapedOperators.check_mulfunc_operator_support` method.
 
-The default implementation of `with_jacobian` uses
-[`jvp_func`](@ref) and [`with_vjp_func`](@ref) to implement (adjoint)
-multiplication of `J` with (adjoint) vectors.
+The implicit-operator variants use [`jvp_func`](@ref) and
+[`with_vjp_func`](@ref) to implement (adjoint) multiplication of `J`
+with (adjoint) vectors. An AD mode missing from `ad` leaves that
+direction unavailable; operator types that can't represent the missing
+direction are rejected at construction.
 """
 function with_jacobian end
 export with_jacobian
 
 
-function with_jacobian(f::F, x::AbstractVector{<:Number}, ::Type{OP}, ad::ADSelector) where {F,OP}
-    ad_fwd = forward_adtype(ad)
-    ad_rev = reverse_adtype(ad)
-    f_jvp = _maybe_jvp_func(ad_fwd, f, x, ad)
-    y, f_vjp = _maybe_with_vjp_func(ad_rev, f, x, ad)
-    T = promote_type(float(eltype(x)), float(eltype(y)))
-    sz = Dims((size(y,1), size(x,1)))
-    J = mulfunc_operator(OP, T, sz, f_jvp, f_vjp, Val(false), Val(false), Val(false))
-    return y, J
-end
-
+# A missing AD mode yields `nothing` instead of a multiplication
+# function, the `nothing` convention of the MatrixShapedOperators seam -
+# so foreign operator types report a missing adjoint honestly and reject
+# unrepresentable operators at construction:
 _maybe_jvp_func(ad_fwd::AbstractADType, f::F, x, ::ADSelector) where F = jvp_func(f, x, ad_fwd)
-_maybe_jvp_func(::NoAutoDiff, f, x, ad::ADSelector) = _NoJVPFunc{typeof(ad)}()
-
-struct _NoJVPFunc{AD<:ADSelector} <: Function end
-function (::_NoJVPFunc{AD})(::AbstractVector{<:Number}) where AD
-    throw(ErrorException("No forward-mode automatic differentiation available for AD-selector $(nameof(AD)), can't compute Jacobian * vector products"))
-end
+_maybe_jvp_func(::NoAutoDiff, ::Any, ::Any, ::ADSelector) = nothing
 
 _maybe_with_vjp_func(ad_rev::AbstractADType, f::F, x, ::ADSelector) where F = with_vjp_func(f, x, ad_rev)
-_maybe_with_vjp_func(::NoAutoDiff, f, x, ad::ADSelector) = f(with_floatlike_contents(x)), _NoVJPFunc{typeof(ad)}()
+_maybe_with_vjp_func(::NoAutoDiff, f, x, ::ADSelector) = f(with_floatlike_contents(x)), nothing
 
-struct _NoVJPFunc{AD<:ADSelector} <: Function end
-function (::_NoVJPFunc{AD})(::AbstractVector{<:Number}) where AD
-    throw(ErrorException("No reverse-mode automatic differentiation available for AD-selector $(nameof(AD)), can't compute vector * Jacobian product"))
+
+function with_jacobian(f::F, x::AbstractVector{<:Number}, ::Type{AbstractMatrix}, ad::ADSelector) where F
+    return _with_jacobian_matrix(f, x, ad)
 end
 
-
-function with_jacobian(f::F, x::AbstractVector{<:Number}, ::Type{<:DenseMatrix}, ad::ADSelector) where F
-    return _with_jacobian_matrix(f, x, ad)
+# `Matrix` was the explicit-Jacobian request type up to v0.3; via the
+# generic operator path it would only work when forward mode is
+# available, so reject it outright with a migration hint:
+function with_jacobian(::Any, ::AbstractVector{<:Number}, ::Type{Matrix}, ::ADSelector)
+    throw(ArgumentError(
+        "with_jacobian does not support OP = Matrix anymore, request OP = AbstractMatrix instead and convert the result via Matrix if necessary"
+    ))
 end
 
 function _with_jacobian_matrix(f::F, x::AbstractVector{<:Number}, ad::ADSelector) where F

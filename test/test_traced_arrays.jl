@@ -43,5 +43,5 @@ Test.@testset "test_traced_arrays" begin
     @test_throws ArgumentError jvp_func(f_vec, xc, ad)
     @test_throws ArgumentError with_vjp_func(f_vec, xc, ad)
     @test_throws ArgumentError with_jvp(f_vec, xc, zc, ad)
-    @test_throws ArgumentError with_jacobian(f_vec, xc, DenseMatrix, ad)
+    @test_throws ArgumentError with_jacobian(f_vec, xc, AbstractMatrix, ad)
 end

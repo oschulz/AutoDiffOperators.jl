@@ -5,6 +5,8 @@ using Test
 
 using ForwardDiff
 using LinearMaps
+using MatrixShapedOperators
+using AutoDiffOperators: ADJacobian
 
 using ADTypes: NoAutoDiff
 using FunctionWrappers: FunctionWrapper
@@ -59,7 +61,7 @@ function test_adsel_functionality(ad::ADSelector)
         @test z_J ≈ J_f_ref' * J_z_l
 
 
-        @test approx_cmp(@inferred(with_jacobian(f, x, DenseMatrix, ad)), (f_x_ref, J_f_ref))
+        @test approx_cmp(@inferred(with_jacobian(f, x, AbstractMatrix, ad)), (f_x_ref, J_f_ref))
 
         f_x, J = @inferred with_jacobian(f, x, LinearMap, ad)
         @test f_x ≈ f_x_ref
@@ -67,6 +69,49 @@ function test_adsel_functionality(ad::ADSelector)
         @test Matrix(J) ≈ J_f_ref
         @test @inferred(J * J_z_r) ≈ J_f_ref * J_z_r
         @test @inferred(J_z_l' * J) ≈ J_z_l' * J_f_ref
+
+        f_x, J = @inferred with_jacobian(f, x, MulFuncOperator, ad)
+        @test f_x ≈ f_x_ref
+        @test J isa MulFuncOperator
+        @test Matrix(J) ≈ J_f_ref
+        @test @inferred(J * J_z_r) ≈ J_f_ref * J_z_r
+        @test @inferred(J' * J_z_l) ≈ J_f_ref' * J_z_l
+        @test @inferred(J_z_l' * J) ≈ J_z_l' * J_f_ref
+        let Z_r = rand(Float32, size(x, 1), 3), Z_l = rand(Float32, size(f_x_ref, 1), 3)
+            @test @inferred(J * Z_r) ≈ J_f_ref * Z_r
+            @test @inferred(J' * Z_l) ≈ J_f_ref' * Z_l
+        end
+
+        f_x, J = @inferred with_jacobian(f, x, MatrixShapedOperator, ad)
+        @test f_x ≈ f_x_ref
+        @test J isa ADJacobian
+        @test J._f === f && J._ad === ad
+        @test size(J) == size(J_f_ref)
+        @test Matrix(J) ≈ J_f_ref
+        @test @inferred(J * J_z_r) ≈ J_f_ref * J_z_r
+        @test @inferred(J' * J_z_l) ≈ J_f_ref' * J_z_l
+        @test @inferred(J_z_l' * J) ≈ J_z_l' * J_f_ref
+        @test J'' === J
+        @test size(J') == reverse(size(J_f_ref))
+        @test parent(J') === J
+        @test Matrix(J') ≈ J_f_ref'
+        @test occursin("ADJacobian", sprint(show, J))
+        let J2 = with_jacobian(f, x, MatrixShapedOperator, ad)[2]
+            @test J2 == J && hash(J2) == hash(J)
+            @test J2' == J' && hash(J2') == hash(J')
+        end
+        let Z_r = rand(Float32, size(x, 1), 3), Z_l = rand(Float32, size(f_x_ref, 1), 3)
+            @test @inferred(J * Z_r) ≈ J_f_ref * Z_r
+            @test @inferred(J' * Z_l) ≈ J_f_ref' * Z_l
+        end
+        @test J * zeros(Float32, size(x, 1), 0) == zeros(Float32, size(f_x_ref, 1), 0)
+
+        # MSO's own operator-contract tester (linearity, adjoint
+        # consistency, batched application, materialization, traits):
+        MatrixShapedOperators.test_operator(
+            J;
+            directions = ad_fwd isa NoAutoDiff ? (:adjoint) : ad_rev isa NoAutoDiff ? (:forward) : (:both)
+        )
 
 
         @test @inferred(with_gradient(g, x, ad)) isa Tuple{Vararg{Any,2}}
