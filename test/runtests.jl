@@ -6,6 +6,7 @@ Test.@testset "Package AutoDiffOperators" begin
     include("test_aqua.jl")
     include("test_util.jl")
     include("test_traced_arrays.jl")
+    include("test_static_arrays.jl")
     include("test_linear_maps.jl")
     include("test_sciml_operators.jl")
     include("test_adselector.jl")
