@@ -28,22 +28,6 @@ _with_floatlike_contents_impl(A::AbstractArray{T}, ::Type{T}) where {T<:Number} 
 _with_floatlike_contents_impl(A::AbstractArray{T}, ::Type{U}) where {T<:Number,U<:Number} = float.(A)
 
 
-"""
-    AutoDiffOperators.similar_onehot(A::AbstractArray, ::Type{T}, n::Integer, i::Integer)
-
-Return an array similar to `A`, but with `n` elements of type `T`, all set to
-zero but the `i`-th element set to one.
-"""
-function similar_onehot end
-
-function similar_onehot(A::AbstractArray{<:Number}, ::Type{T}, n::Integer, i::Integer) where {T<:Number}
-    result = similar(A, T, (n,))
-    fill!(result, zero(T))
-    result[i] = one(T)
-    return result
-end
-
-
 _primal_return_type(f::F, ::T) where {F, T} = Core.Compiler.return_type(f, Tuple{T})
 
 function _concrete_return_vector_type(f::F, x::T) where {F, T}
