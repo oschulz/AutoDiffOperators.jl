@@ -7,7 +7,7 @@ using LinearAlgebra
 using ADTypes: NoAutoDiff, AutoMooncake, AutoMooncakeForward
 import Mooncake
 
-include("testutils.jl")
+isdefined(Main, :test_adsel_functionality) || include("testutils.jl")
 
 
 @testset "test mooncake" begin

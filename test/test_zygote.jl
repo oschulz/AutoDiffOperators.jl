@@ -5,7 +5,7 @@ using LinearAlgebra
 using ADTypes: AutoZygote
 import Zygote, ForwardDiff
 
-include("testutils.jl")
+isdefined(Main, :test_adsel_functionality) || include("testutils.jl")
 
 
 @testset "test Zygote" begin

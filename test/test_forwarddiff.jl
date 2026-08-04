@@ -7,7 +7,7 @@ using LinearAlgebra
 using ADTypes: AutoForwardDiff
 import ForwardDiff
 
-include("testutils.jl")
+isdefined(Main, :test_adsel_functionality) || include("testutils.jl")
 
 
 @testset "test ForwardDiff" begin
