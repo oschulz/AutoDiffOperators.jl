@@ -133,8 +133,8 @@ end
 function _jvp_func_impl(::Nothing, f::F, float_x::AbstractVector{<:Number}, ad::AbstractADType) where F
     Tx = typeof(float_x)
     Ty = _concrete_return_vector_type(f, float_x)
-    prep = DI.prepare_pushforward_same_point(f, ad, float_x, (float_x,))
-    aux = _DIPrep(_borrowable_object(_CacheLikeUse(), prep))
+    make_prep = _DIPrepFactory(DI.prepare_pushforward_same_point, f, ad, (float_x, (float_x,)))
+    aux = _DIPrep(_borrowable_object(_CacheLikeUse(), make_prep(), make_prep))
     f_jvp = _JVPFunc(aux, ad, f, float_x, Ty)
     return _WrappedFunction{Ty,Tx}(f_jvp)
 end
@@ -201,8 +201,8 @@ function _with_vjp_func_impl(::Nothing, f::F, float_x::AbstractVector{<:Number},
     Tx = typeof(float_x)
     f_x = f(float_x)
     Ty = typeof(f_x)
-    prep = DI.prepare_pullback_same_point(f, ad, float_x, (f_x,))
-    aux = _DIPrep(_borrowable_object(_CacheLikeUse(), prep))
+    make_prep = _DIPrepFactory(DI.prepare_pullback_same_point, f, ad, (float_x, (f_x,)))
+    aux = _DIPrep(_borrowable_object(_CacheLikeUse(), make_prep(), make_prep))
     f_vjp = _VJPFunc(aux, ad, f, float_x, Ty)
     return f_x, _WrappedFunction{Tx,Ty}(f_vjp)
 end

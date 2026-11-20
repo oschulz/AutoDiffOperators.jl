@@ -32,4 +32,13 @@ isdefined(Main, :test_adsel_functionality) || include("testutils.jl")
     end
 
     test_adsel_functionality(ad)
+
+    # Concurrent use of a prepared function must not depend on what the
+    # caller does with the dummy argument after preparation:
+    let dummy_x = rand(10^5) .+ 1, x = rand(10^5) .+ 1
+        f_∇f = valgrad_func(x -> sum(log, x), ad, dummy_x)
+        fill!(dummy_x, -1)
+        results = fetch.([Threads.@spawn f_∇f(x) for _ in 1:4*Threads.nthreads()])
+        @test all(r -> r[1] ≈ sum(log, x) && r[2] ≈ inv.(x), results)
+    end
 end

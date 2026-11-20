@@ -166,8 +166,10 @@ end
 function _valgrad_func_impl(::Nothing, f::F, ad::AbstractADType, float_x::AbstractVector{<:Number}) where F
     Tx = typeof(float_x)
     Ty = _concrete_return_realtype(f, float_x)
-    prep = DI.prepare_gradient(f, ad, float_x)
-    aux = _DIPrep(_borrowable_object(_CacheLikeUse(), prep))
+    # Later preparations must not depend on what the caller does with
+    # `dummy_x`, `copy` would not preserve the type of all arrays:
+    make_prep = _DIPrepFactory(DI.prepare_gradient, f, ad, (deepcopy(float_x),))
+    aux = _DIPrep(_borrowable_object(_CacheLikeUse(), make_prep(), make_prep))
     f_∇f = _ValGradFunc(aux, ad, f)
     return _WrappedFunction{Tuple{Ty,Tx},Tx}(f_∇f)
 end
@@ -224,8 +226,10 @@ end
 
 function _gradient_func_impl(::Nothing, f::F, ad::AbstractADType, float_x::AbstractVector{<:Number}) where F
     Tx = typeof(float_x)
-    prep = DI.prepare_gradient(f, ad, float_x)
-    aux = _DIPrep(_borrowable_object(_CacheLikeUse(), prep))
+    # Later preparations must not depend on what the caller does with
+    # `dummy_x`, `copy` would not preserve the type of all arrays:
+    make_prep = _DIPrepFactory(DI.prepare_gradient, f, ad, (deepcopy(float_x),))
+    aux = _DIPrep(_borrowable_object(_CacheLikeUse(), make_prep(), make_prep))
     ∇f = _GradOnlyFunc(aux, ad, f)
     return _WrappedFunction{Tx,Tx}(∇f)
 end

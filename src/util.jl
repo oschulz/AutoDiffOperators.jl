@@ -99,9 +99,11 @@ end
 end
 
 
-@inline _borrowable_object(usage::_CacheLikeUse, value::T) where {T} = _borrowable_object_impl(_is_immutable_type(T), usage, value)
-@inline _borrowable_object_impl(::Val{true}, ::_CacheLikeUse, value::T) where {T} = value
-@inline _borrowable_object_impl(::Val{false}, usage::_CacheLikeUse, value::T) where {T} = _CacheLikePool(value, usage.nwriters)
+# `make_value()` must return a fresh object equivalent to `value`, that can be
+# used concurrently with it. It may be called at any later time:
+@inline _borrowable_object(usage::_CacheLikeUse, value::T, make_value::F) where {T,F} = _borrowable_object_impl(_is_immutable_type(T), usage, value, make_value)
+@inline _borrowable_object_impl(::Val{true}, ::_CacheLikeUse, value::T, ::F) where {T,F} = value
+@inline _borrowable_object_impl(::Val{false}, usage::_CacheLikeUse, value::T, make_value::F) where {T,F} = _CacheLikePool(value, make_value, usage.nwriters)
 
 _borrow_maybewrite(obj) = obj, nothing
 _return_borrowed(obj, ::Any, ::Nothing) = nothing
@@ -124,24 +126,28 @@ end
 
 const _ConditionType = typeof(Threads.Condition())
 
-
-struct _CacheLikePool{T}
-    value::T
+# The pool owns `value` as its first instance. The lowest free instance is
+# borrowed first, so serial use only ever sees `value` itself, further
+# instances are made on demand when several are borrowed at the same time.
+struct _CacheLikePool{T,F}
+    make_value::F
     isvalid::BitVector
     isavail::BitVector
     instances::Vector{T}
     cond::_ConditionType
 end
 
-function _CacheLikePool(value::T, n_max::Int) where {T}
+function _CacheLikePool(value::T, make_value::F, n_max::Int) where {T,F}
+    n_max >= 1 || throw(ArgumentError("_CacheLikePool requires at least one instance"))
     instances = Vector{T}(undef, n_max)
+    instances[1] = value
     isvalid = BitVector(undef, n_max)
     fill!(isvalid, false)
+    isvalid[1] = true
     isavail = BitVector(undef, n_max)
     fill!(isavail, true)
     cond = Threads.Condition()
-    @assert eachindex(isvalid) == eachindex(isavail) == eachindex(instances)
-    return _CacheLikePool{T}(value, isvalid, isavail, instances, cond)
+    return _CacheLikePool{T,F}(make_value, isvalid, isavail, instances, cond)
 end
 
 struct _MaybeWriteIdxHandle
@@ -165,7 +171,6 @@ function _borrow_maybewrite(obj::_CacheLikePool{T}) where {T}
             end
         end
 
-        # @assert isavail[instance_idx]
         isavail[instance_idx] = false
         instance_valid = isvalid[instance_idx]
     end
@@ -173,16 +178,22 @@ function _borrow_maybewrite(obj::_CacheLikePool{T}) where {T}
     instance::T = if instance_valid
         instances[instance_idx]
     else
-        new_instance = deepcopy(obj.value)
+        new_instance = try
+            obj.make_value()
+        catch
+            @lock cond begin
+                isavail[instance_idx] = true
+                notify(cond; all = false)
+            end
+            rethrow()
+        end
+        # A new object of another type than `value` can't be used, its
+        # slot stays disabled, so borrow another instance instead:
+        new_instance isa T || return _borrow_maybewrite(obj)
         instances[instance_idx] = new_instance
         @lock cond isvalid[instance_idx] = true
         new_instance
     end
-
-    # @assert isvalid[instance_idx]
-    # @assert isassigned(instances, instance_idx)
-    # @assert instances[instance_idx] === instance
-    # @assert !isavail[instance_idx]
 
     return instance, _MaybeWriteIdxHandle(instance_idx)
 end
@@ -191,20 +202,15 @@ function _return_borrowed(obj::_CacheLikePool{T}, instance::T, handle::_MaybeWri
     (;isvalid, isavail, instances, cond) = obj
     instance_idx = handle.instance_idx
     @lock cond begin
-        try
-            if !isvalid[instance_idx]
-                throw(ErrorException("Object handle returned to _CacheLikePool does reference an invalid object, invalid handle returned?"))
-            elseif isavail[instance_idx]
-                instances[instance_idx] = deepcopy(obj.value)
-                throw(ErrorException("Object handle $handle returned to _CacheLikePool is already marked as available ($isavail), wrong handle returned?"))
-            elseif instances[instance_idx] !== instance
-                instances[instance_idx] = deepcopy(obj.value)
-                throw(ErrorException("Object instance (type $(nameof(T))) returned to _CacheLikePool does not match borrowed instance for given handle, wrong object/handle returned?"))
-            end
-        finally
-            isavail[instance_idx] = true
-            notify(cond; all = false)
+        if !isvalid[instance_idx]
+            throw(ErrorException("Object handle returned to _CacheLikePool does reference an invalid object, invalid handle returned?"))
+        elseif isavail[instance_idx]
+            throw(ErrorException("Object handle $handle returned to _CacheLikePool is already marked as available ($isavail), wrong handle returned?"))
+        elseif instances[instance_idx] !== instance
+            throw(ErrorException("Object instance (type $(nameof(T))) returned to _CacheLikePool does not match borrowed instance for given handle, wrong object/handle returned?"))
         end
+        isavail[instance_idx] = true
+        notify(cond; all = false)
     end
     return nothing
 end
@@ -214,3 +220,20 @@ end
 struct _DIPrep{T}
     prep::T
 end
+
+
+# Makes equivalent DI preparations on demand, via `prepare(f, ad, args...)`.
+# A closure would capture a type-valued `f` as a `DataType` on Julia v1.10,
+# this keeps it as `Type{FT}`:
+struct _DIPrepFactory{P,F,AD<:AbstractADType,Args<:Tuple}
+    prepare::P
+    f::F
+    ad::AD
+    args::Args
+end
+
+function _DIPrepFactory(prepare::P, ::Type{FT}, ad::AD, args::Args) where {P,FT,AD<:AbstractADType,Args<:Tuple}
+    return _DIPrepFactory{P,Type{FT},AD,Args}(prepare, FT, ad, args)
+end
+
+(make_prep::_DIPrepFactory)() = make_prep.prepare(make_prep.f, make_prep.ad, make_prep.args...)
